@@ -4,7 +4,7 @@ Arbeitsblätter mit Starteraufgaben (Aufgaben links, freier Lösungsbereich rech
 
 Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 
-> **Stand: Meilenstein 5 (Zufallsaufgaben).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen, PDF-Export und visuellem Formel-Editor; Bibliothek mit Vorschaubildern, Suche und Sortierung; Aufgabenbank mit Klassenstufe, Thema und Schlagwörtern; **Zufallsaufgaben und Zufallsvorlagen** mit einstellbarem Zahlenraum und Dezimalstellen; Sicherung als Datei (Blätter, Bank, Bilder) mit Erinnerung.
+> **Stand: Meilenstein 5 (Zufallsaufgaben).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen, PDF-Export und visuellem Formel-Editor; Bibliothek mit Vorschaubildern, Suche und Sortierung; Aufgabenbank mit Klassenstufe, Thema und Schlagwörtern; **Zufallsaufgaben und Zufallsvorlagen** mit einstellbarem Zahlenraum und Dezimalstellen; Sicherung als Datei (Blätter, Bank, Bilder) mit Erinnerung; **28 Aufgabentypen** (Terme/Gleichungen, Potenzen/Wurzeln, Geometrie als Text) und **Abgleich zwischen PC und iPad über eine Datei in OneDrive**.
 
 ## Bedienung
 
@@ -22,6 +22,11 @@ Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
   - *Gemerkt:* Die zuletzt benutzten Einstellungen jedes Typs bleiben erhalten.
 - **Zufallsvorlagen in der Bank:** Im Zufallsaufgaben-Dialog **„Als Vorlage in die Bank“** (oder in der Bank **„+ Zufallsvorlage“**) legt die *Einstellungen* ab, nicht die Zahlen. Wird die Vorlage über **„Aus Bank …“** ins Blatt geholt, würfelt sie **jedes Mal neue Zahlen**; in der Bank lassen sich Einstellungen ändern und ein neues Beispiel würfeln.
 - **Sicherung:** „Sicherung“ oben → *Sicherung erstellen* legt eine `.json`-Datei mit allen Blättern, der Aufgabenbank und den Bildern an (am iPad per „Teilen“ z. B. in Dateien/OneDrive, am PC als Download). *Sicherung einspielen* liest so eine Datei wieder ein: neue Blätter kommen dazu, in der Datei neuere ersetzen die lokalen, hier neuere bleiben (oder werden als Kopie übernommen). So wechseln Blätter zwischen PC und iPad. Die App erinnert nach mehreren Bearbeitungen bzw. 14 Tagen an eine Sicherung.
+- **Abgleich über OneDrive:** Im Dialog „Sicherung“ gibt es unten den Bereich **„Abgleich zwischen PC und iPad“**. Beide Geräte benutzen *eine* gemeinsame Datei (`Starteraufgaben_Sync.json`) in OneDrive; ein Klick führt den Stand der Datei mit dem Stand auf dem Gerät zusammen und schreibt das Ergebnis zurück. Vorher zeigt eine Vorschau, was passiert.
+  - *PC (Edge/Chrome):* einmal **„Neue Sync-Datei anlegen …“** (bzw. am zweiten Gerät **„Vorhandene Sync-Datei wählen …“**) und die Datei im OneDrive-Ordner wählen. Danach genügt **„Abgleichen“**: Die App liest und schreibt die Datei direkt, OneDrive übernimmt den Rest. Beim ersten Mal nach dem Start fragt der Browser kurz nach der Erlaubnis.
+  - *iPad (Safari/PWA):* **„Abgleichen …“** öffnet die Dateien-App → `Starteraufgaben_Sync.json` aus OneDrive wählen → Vorschau → **„Abgleichen“** → **„In Dateien / OneDrive sichern …“** und die vorhandene Datei **ersetzen**. Gibt es noch keine Datei, legt **„Neue Sync-Datei erstellen“** sie an.
+  - *Regeln:* Je Blatt bzw. Bank-Aufgabe gewinnt die neuere Fassung. Wurde dasselbe Blatt auf beiden Geräten seit dem letzten Abgleich geändert, bleibt die ältere Fassung als Kopie **„… (Konflikt)“** (Bank: Schlagwort „Konflikt“) erhalten – nichts geht still verloren. **Löschen wandert mit** (Löschmarken, 90 Tage lang); wer ein gelöschtes Blatt woanders später bearbeitet hat, bekommt es zurück. Einstellungen werden nicht abgeglichen. Das automatisch angelegte Beispielblatt eines neuen Geräts wird wie jedes Blatt mit abgeglichen und kann gelöscht werden.
+  - *Hinweis:* Die Datei ist ein Format der Version 2; ältere App-Stände (Version 1) lehnen sie ab – beide Geräte vorher aktualisieren. Eine Sicherung als Sicherheitsnetz vor dem ersten Abgleich schadet nicht (die Datenbank wird beim ersten Start der neuen Version auf Version 2 erweitert, vorhandene Daten bleiben erhalten).
 - **Im Blatt antippen:** Aufgabe (Zeile) antippen → rechts erscheint „Aufgabe“ mit Text, Formatierung, Bild, Lösungsfeld und Zeilenhöhe. Titel, Nummer, Zeit usw. antippen → das passende Feld im Reiter „Blatt“.
 - **Text:** `**fett**`, `*kursiv*`, `__unterstrichen__`, Zeilen mit `a) ` als Teilaufgaben, `- ` als Aufzählung, `\$` für ein echtes Dollarzeichen (die Knöpfe über dem Textfeld setzen das für dich).
 - **Formeln:** Knopf **∑ Formel** über dem Textfeld → Formel-Editor: am iPad mit eigener Zahlen-Tastatur (Bruch `a⁄b`, Komma, `·`, `:`, `%`, Hochzahl, Wurzel, ≤ ≥ ≠), am PC auch per Tippen (`3/4` → Bruch, `x^2`, `sqrt`). „Einfügen“ setzt die Formel als `$…$` in den Text. Steht der Cursor in einer Formel, öffnet der Knopf sie zum **Ändern**. Option „Große Darstellung“ zeigt Brüche in voller Höhe. Dezimalkommas (`3,5`) werden eng gesetzt. Unter „⋯ → Voreinstellungen“ lässt sich der Editor abschalten; der Knopf setzt dann nur `$…$`, und du schreibst die Formel selbst als LaTeX (z. B. `$\frac{3}{4}$`).
@@ -33,11 +38,18 @@ Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 - Die App lädt **nichts von fremden Servern** (keine CDNs, keine Google Fonts, keine Statistik). Alle Bibliotheken und Schriften liegen in diesem Repo.
 - Dieses Repository ist öffentlich. Hier liegt nur der **Programmcode**. Deine Arbeitsblätter und Bilder bleiben später auf deinem Gerät (Browser-Speicher) bzw. in Sicherungsdateien, die du selbst ablegst (z. B. OneDrive).
 
-## iPad-Test (Meilenstein 5)
+## iPad-Test (Abgleich und neue Aufgabentypen)
 
-Die installierte App holt sich die neue Version selbst: beim nächsten Start erscheint oben „Eine neue Version ist bereit“ → **Jetzt aktualisieren**.
+Die installierte App holt sich die neue Version selbst: beim nächsten Start erscheint oben „Eine neue Version ist bereit“ → **Jetzt aktualisieren**. Vorher einmal **Sicherung erstellen** (Sicherheitsnetz vor dem Datenbank-Upgrade).
 
-Neu in diesem Meilenstein (Zufallsaufgaben):
+Neu (Abgleich über OneDrive und Aufgabentypen):
+
+1. **PC:** Sicherung → *Neue Sync-Datei anlegen …* → Datei im OneDrive-Ordner wählen → **Abgleichen**. Liegt `Starteraufgaben_Sync.json` danach in OneDrive?
+2. **iPad:** Sicherung → **Abgleichen …** → die Datei aus OneDrive wählen (Dateien-App) → **Abgleichen** → **In Dateien / OneDrive sichern …** → *Ersetzen*. Kommen die PC-Blätter an?
+3. Am iPad ein Blatt ändern und abgleichen, dann am PC **Abgleichen**: ist die Änderung da? Ein Blatt am PC löschen, abgleichen, am iPad abgleichen: ist es weg und bleibt es weg?
+4. Zufallsaufgabe mit den neuen Typen (Terme/Gleichungen, Potenzen/Wurzeln, Geometrie): Ziffernblock und Auswahlfelder im Dialog, PDF mit Wurzeln, Hochzahlen und Einheiten.
+
+Davor (Meilenstein 5, Zufallsaufgaben):
 
 1. Im Blatt **Zufallsaufgabe …** → *Brüche kürzen*: Zahlenraum z. B. 10 bis 48 eintippen (Ziffernblock?), Anzahl 3, **Hinzufügen**. Stimmen die Brüche im Zahlenraum, und passt die Aufgabe aufs Blatt?
 2. *Rechnen* mit **Dezimalstellen 2** und Zahlenraum 1 bis 20, alle vier Rechenarten: Haben alle Dezimalzahlen genau zwei Stellen?

@@ -12,6 +12,7 @@ import {
 import { imageIdsOfBank } from './bank.js';
 import { rememberImage } from './images.js';
 import { imageIdsOf } from './model.js';
+import { createSyncUi } from './sync-ui.js';
 import { $, fileDeliverable, mb, toast } from './ui.js';
 
 export function createBackupUi(app) {
@@ -43,6 +44,7 @@ export function createBackupUi(app) {
     actions.replaceChildren();
     const last = app.settings.lastBackupAt;
     $('#backup-last').textContent = single ? '' : last ? `Letzte Sicherung: ${new Date(last).toLocaleString('de-DE')}` : 'Es gibt noch keine Sicherung.';
+    sync.renderHome({ hidden: Boolean(single) });
   }
 
   function showResult(text, { warnings = [], buttons = [], error = false } = {}) {
@@ -59,6 +61,8 @@ export function createBackupUi(app) {
     notes.hidden = !warnings.length;
     actions.replaceChildren(...buttons, button('Zurück', showHome));
   }
+
+  const sync = createSyncUi(app, { showResult, showHome, button });
 
   async function open({ sheets = null } = {}) {
     await app.flush();

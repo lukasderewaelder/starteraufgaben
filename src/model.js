@@ -34,6 +34,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   changesSinceBackup: 0,
   firstChangeAt: 0,
   reminderSnoozedUntil: 0,
+  // Abgleich über eine gemeinsame Datei (siehe sync-ui.js): letzter Abgleich dieses Geräts und – am PC – die verknüpfte Datei
+  lastSyncAt: 0,
+  syncHandle: null,
 });
 
 /** `generator`: Beschreibung einer Zufallsaufgabe (siehe generators/index.js) oder null; `solution`: Lösung, falls bekannt. */

@@ -4,8 +4,11 @@ import { normalizeBankItem } from './bank.js';
 import { DEFAULT_SETTINGS, normalizeSheet } from './model.js';
 
 const DB_NAME = 'starteraufgaben';
-const DB_VERSION = 1;
-const STORES = ['sheets', 'images', 'bank', 'settings'];
+const DB_VERSION = 2; // 2: Löschmarken ('deleted') für den Abgleich zwischen Geräten
+const STORES = ['sheets', 'images', 'bank', 'settings', 'deleted'];
+
+/** Eine Löschmarke merkt sich, dass ein Blatt/eine Bank-Aufgabe bewusst gelöscht wurde (sonst käme es beim Abgleich zurück). */
+const markOf = (kind, id, deletedAt) => ({ id: `${kind}:${id}`, kind, itemId: id, deletedAt });
 
 function request(req) {
   return new Promise((resolve, reject) => {
@@ -39,6 +42,15 @@ function openDb() {
 
 /** Gemeinsame Schnittstelle für IndexedDB- und Arbeitsspeicher-Speicher. */
 function buildApi(backend, persistent) {
+  // Speichern hebt eine Löschmarke auf (Rückgängig, Wiederherstellen, neuere Fassung aus dem Abgleich).
+  const saveKept = async (kind, store, value) => {
+    await backend.put(store, structuredClone(value));
+    await backend.delete('deleted', `${kind}:${value.id}`);
+  };
+  const deleteWithMark = async (kind, store, id, deletedAt) => {
+    await backend.put('deleted', markOf(kind, id, deletedAt));
+    await backend.delete(store, id);
+  };
   return {
     persistent,
     async listSheets() {
@@ -48,8 +60,8 @@ function buildApi(backend, persistent) {
     async getSheet(id) {
       return normalizeSheet(await backend.get('sheets', id));
     },
-    saveSheet: (sheet) => backend.put('sheets', structuredClone(sheet)),
-    deleteSheet: (id) => backend.delete('sheets', id),
+    saveSheet: (sheet) => saveKept('sheet', 'sheets', sheet),
+    deleteSheet: (id, { deletedAt = Date.now() } = {}) => deleteWithMark('sheet', 'sheets', id, deletedAt),
 
     async listBank() {
       const all = await backend.getAll('bank');
@@ -58,8 +70,21 @@ function buildApi(backend, persistent) {
     async getBankItem(id) {
       return normalizeBankItem(await backend.get('bank', id));
     },
-    saveBankItem: (item) => backend.put('bank', structuredClone(item)),
-    deleteBankItem: (id) => backend.delete('bank', id),
+    saveBankItem: (item) => saveKept('bank', 'bank', item),
+    deleteBankItem: (id, { deletedAt = Date.now() } = {}) => deleteWithMark('bank', 'bank', id, deletedAt),
+
+    /** Löschmarken: [{ kind: 'sheet' | 'bank', id, deletedAt }]. */
+    async listDeleted() {
+      return (await backend.getAll('deleted')).map(({ kind, itemId, deletedAt }) => ({ kind, id: itemId, deletedAt }));
+    },
+    /** Nur die Marke ablegen (das Element gibt es hier nicht), z. B. aus einer Sync-Datei. */
+    saveDeleted: (kind, id, deletedAt) => backend.put('deleted', markOf(kind, id, deletedAt)),
+    /** Marken, die länger als `maxAgeMs` zurückliegen, vergessen. */
+    async pruneDeleted(maxAgeMs, now = Date.now()) {
+      const old = (await backend.getAll('deleted')).filter((m) => now - m.deletedAt > maxAgeMs);
+      for (const m of old) await backend.delete('deleted', m.id);
+      return old.length;
+    },
 
     saveImage: (image) => backend.put('images', image), // { id, blob, width, height }
     getImage: (id) => backend.get('images', id),

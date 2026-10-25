@@ -236,6 +236,8 @@ dialog {
 dialog::backdrop { background: rgb(15 23 42 / 0.45); }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .menu-list { display: grid; gap: 8px; }
+.sync-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--gray-200); }
+.sync-section h3 { margin: 0 0 6px; font-size: 1rem; }
 .more { margin-top: 12px; }
 .more summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .result-error { color: var(--red-600); }
