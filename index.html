@@ -15,6 +15,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="assets/css/fonts.css">
+  <link rel="stylesheet" href="assets/css/mathfont.css" id="mathfont-css">
+  <link rel="stylesheet" href="assets/css/mathfont-symbols.css" id="mathfont-symbols-css">
   <link rel="stylesheet" href="assets/css/app.css">
   <link rel="stylesheet" href="assets/css/sheet.css">
   <link rel="stylesheet" href="assets/css/print.css" media="print">
@@ -402,6 +404,10 @@
     <p class="muted">Gilt für neu angelegte Blätter. Einzelne Aufgaben können davon abweichen.</p>
     <label class="check"><input type="checkbox" id="s-formula"> Visueller Formel-Editor (Knopf „∑ Formel“)</label>
     <p class="muted">Aus: der Knopf setzt nur <code>$…$</code>, die Formel schreibst du dann selbst als LaTeX.</p>
+    <label class="check"><input type="checkbox" id="s-mathfont"> Formelschrift wie das Blatt (Comic Neue)</label>
+    <p class="muted">Aus: klassische Mathe-Schrift mit Serifen. Gilt im Blatt, in der Vorschau und im Formel-Editor.</p>
+    <label class="check"><input type="checkbox" id="s-thousands"> Tausendertrenner in Formeln automatisch</label>
+    <p class="muted">Zahlen ab fünf Stellen bekommen einen kleinen Abstand: <code>$12345$</code> erscheint als 12&#8239;345. Normaler Text außerhalb von Formeln bleibt, wie du ihn tippst.</p>
     <div class="dialog-foot"><button type="button" class="btn btn-primary" data-close>Fertig</button></div>
   </dialog>
 

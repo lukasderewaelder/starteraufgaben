@@ -27,11 +27,89 @@ export function germanDecimal(latex) {
   return latex.replace(/(\d),(?=\d)/g, '$1{,}');
 }
 
+// Befehle, deren {…}-Argument kein Zahlenwert zum Gruppieren ist (Text, Maße, Zeichencodes).
+const NO_GROUP_ARG = new Set(['text', 'textrm', 'textbf', 'textit', 'textsf', 'texttt', 'hspace', 'hskip', 'kern', 'mspace', 'mskip', 'rule', 'char', 'phantom', 'color', 'href', 'url']);
+
+/** Index hinter der zu `open` gehörenden schließenden Klammer (oder Ende des Textes). */
+function endOfGroup(text, open, closeChar) {
+  const openChar = text[open];
+  let depth = 0;
+  for (let j = open; j < text.length; j += 1) {
+    if (text[j] === '\\') j += 1;
+    else if (text[j] === openChar) depth += 1;
+    else if (text[j] === closeChar && (depth -= 1) === 0) return j + 1;
+  }
+  return text.length;
+}
+
+/**
+ * Tausendertrenner: Ganzzahlen ab `minDigits` Stellen bekommen ein kleines Leerzeichen (`\,`) in Dreierblöcken,
+ * „1234567“ -> „1\,234\,567“. Nicht verändert werden Nachkommastellen (hinter `,`/`.`), Hochzahlen und Indizes,
+ * Text und Maße (`\text{…}`, `\hspace{…}`), Zahlen direkt hinter Buchstaben und bereits getrennte Zahlen.
+ * Der gespeicherte Text bleibt unverändert – das passiert nur beim Anzeigen.
+ */
+export function groupThousands(latex, { minDigits = 5 } = {}) {
+  let out = '';
+  let i = 0;
+  while (i < latex.length) {
+    const ch = latex[i];
+    if (ch === '\\') {
+      const name = latex.slice(i + 1).match(/^[A-Za-z]+/)?.[0] ?? latex[i + 1] ?? '';
+      let end = i + 1 + name.length;
+      if (NO_GROUP_ARG.has(name)) {
+        let k = end;
+        while (latex[k] === ' ') k += 1;
+        if (latex[k] === '{') end = endOfGroup(latex, k, '}');
+        else if (latex[k] === '"') end = k + 1 + (latex.slice(k + 1).match(/^[0-9A-Fa-f]*/)?.[0].length ?? 0);
+      } else if (name === 'sqrt' && latex[end] === '[') {
+        end = endOfGroup(latex, end, ']');
+      }
+      out += latex.slice(i, end);
+      i = end;
+    } else if (ch === '^' || ch === '_') {
+      let end = i + 1;
+      if (latex[end] === '{') end = endOfGroup(latex, end, '}');
+      else if (latex[end] === '\\') end += 1 + (latex.slice(end + 1).match(/^[A-Za-z]+/)?.[0].length || 1);
+      else end += 1;
+      out += latex.slice(i, end);
+      i = end;
+    } else if (/\d/.test(ch)) {
+      const run = latex.slice(i).match(/^\d+/)[0];
+      const prev = out.slice(-1);
+      const decimalPart = prev === ',' || prev === '.' || out.endsWith('{,}');
+      const afterLetter = /[A-Za-z]/.test(prev);
+      out += run.length >= minDigits && !decimalPart && !afterLetter ? run.replace(/\B(?=(\d{3})+$)/g, '\\,') : run;
+      i += run.length;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+// Einstellungen des Formelsatzes (siehe „Voreinstellungen“): automatischer Tausendertrenner und Formelschrift wie das Blatt.
+const options = { thousands: true, matchFont: true };
+export function setMarkupOptions(next) {
+  Object.assign(options, next);
+}
+
+// Zeichen, die Comic Neue direkt hat, sollen auch so erscheinen: Malpunkt U+00B7 (KaTeX nähme U+22C5), „≠“ als ein Zeichen
+// (KaTeX klebt sonst ein „/“ über das „=“, das zu einer anderen Schrift nicht passt).
+const MATCH_FONT_MACROS = { '\\cdot': '\\mathbin{\\char"B7}', '\\ne': '\\mathrel{\\char"2260}', '\\neq': '\\mathrel{\\char"2260}' };
+
 /** Standard-Formelsatz über KaTeX (falls geladen), sonst der Quelltext. */
 export function defaultRenderMath(latex, display) {
   const katex = globalThis.katex;
   if (!katex) return escapeHtml(display ? `$$${latex}$$` : `$${latex}$`);
-  return katex.renderToString(germanDecimal(latex), { throwOnError: false, displayMode: display, output: 'html', strict: 'ignore' });
+  const source = options.thousands ? groupThousands(latex) : latex;
+  return katex.renderToString(germanDecimal(source), {
+    throwOnError: false,
+    displayMode: display,
+    output: 'html',
+    strict: 'ignore',
+    macros: options.matchFont ? { ...MATCH_FONT_MACROS } : {},
+  });
 }
 
 // Sucht das Ende einer Inline-Formel ab `from`; Rückgabe -1, wenn keines existiert (oder ein Zeilenumbruch dazwischen liegt).

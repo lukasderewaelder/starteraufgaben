@@ -2,17 +2,22 @@
 // Der Block zwischen den Marken wird von tools/precache.mjs erzeugt (node tools/precache.mjs).
 
 // >>> precache
-const VERSION = 'b6ef5a4a88';
+const VERSION = '763c02e847';
 const ASSETS = [
   './',
   './assets/css/app.css',
   './assets/css/fonts.css',
+  './assets/css/mathfont-symbols.css',
+  './assets/css/mathfont.css',
   './assets/css/print.css',
   './assets/css/sheet.css',
+  './assets/fonts/comfortaa-greek-400.woff2',
+  './assets/fonts/comfortaa-greek-700.woff2',
   './assets/fonts/comic-neue-latin-400-italic.woff2',
   './assets/fonts/comic-neue-latin-400-normal.woff2',
   './assets/fonts/comic-neue-latin-700-italic.woff2',
   './assets/fonts/comic-neue-latin-700-normal.woff2',
+  './assets/fonts/noto-sans-math-400.woff2',
   './assets/icons/apple-touch-icon.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

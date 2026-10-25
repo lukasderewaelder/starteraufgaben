@@ -10,6 +10,7 @@ import { createFormulaDialog } from './formula.js';
 import { createGeneratorDialog } from './gen-ui.js';
 import { createLibrary } from './library.js';
 import { duplicateSheet, imageIdsOf, newSheet, nextNumber } from './model.js';
+import { setMarkupOptions } from './markup.js';
 import { SOLUTION_STYLES } from './sheet.js';
 import { openStore } from './store.js';
 import { $, fill, toast, wireDialogs } from './ui.js';
@@ -20,6 +21,15 @@ const FIRST_SHEET_TASKS = [
   'Wie viele Sekunden hat eine Minute?',
   'Welche der Figuren sind Dreiecke?',
 ];
+
+/** Formelschrift (mathfont*.css an/aus) und Tausendertrenner nach den Einstellungen setzen. */
+function applyFormulaLook(settings) {
+  setMarkupOptions({ thousands: settings.thousandsSeparator, matchFont: settings.formulaFontMatch });
+  for (const id of ['mathfont-css', 'mathfont-symbols-css']) {
+    const link = document.getElementById(id);
+    if (link) link.disabled = !settings.formulaFontMatch;
+  }
+}
 
 const sheetPath = (id) => `#/blatt/${encodeURIComponent(id)}`;
 const currentSheetId = () => {
@@ -34,6 +44,7 @@ export async function startApp() {
   navigator.storage?.persist?.().catch(() => {});
 
   const app = { store, settings: await store.getSettings(), sheets: [], bank: [], lastChangeAt: 0 };
+  applyFormulaLook(app.settings);
   app.refreshSheets = async () => {
     app.sheets = await store.listSheets();
   };
@@ -148,6 +159,17 @@ export async function startApp() {
   $('#s-solution').value = app.settings.defaultSolutionStyle;
   $('#s-formula').checked = app.settings.formulaEditor;
   $('#s-formula').addEventListener('change', (e) => app.setSettings({ formulaEditor: e.target.checked }));
+  $('#s-mathfont').checked = app.settings.formulaFontMatch;
+  $('#s-thousands').checked = app.settings.thousandsSeparator;
+  // Formelschrift und Tausendertrenner wirken beim Zeichnen der Formeln: nach dem Umschalten alles neu zeichnen.
+  const changeFormulaLook = async (patch) => {
+    await app.setSettings(patch);
+    applyFormulaLook(app.settings);
+    await app.flush();
+    await route();
+  };
+  $('#s-mathfont').addEventListener('change', (e) => changeFormulaLook({ formulaFontMatch: e.target.checked }));
+  $('#s-thousands').addEventListener('change', (e) => changeFormulaLook({ thousandsSeparator: e.target.checked }));
   $('#s-format').addEventListener('change', (e) => app.setSettings({ defaultFormat: e.target.value }));
   $('#s-solution').addEventListener('change', (e) => app.setSettings({ defaultSolutionStyle: e.target.value }));
   app.openSettings = () => $('#dlg-settings').showModal();

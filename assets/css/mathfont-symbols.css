@@ -1,0 +1,108 @@
+/* Ergänzung zu mathfont.css: Zeichen, die Comic Neue nicht hat (≤ ≥ ≠ ≈ ∞ ∠ ∥ → ∈ ∘ ⋅ …),
+   kommen aus Noto Sans Math, die griechischen Buchstaben (α β π Δ …) aus Comfortaa – rund wie Comic Neue.
+   Beide Schriften: SIL OFL 1.1; der Browser lädt sie erst, wenn so ein Zeichen vorkommt.
+   Kommt nach mathfont.css, damit es für die Zeichenbereiche hier Vorrang vor der KaTeX-Schrift hat. */
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+@font-face {
+  font-family: KaTeX_Math;
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+@font-face {
+  font-family: KaTeX_Math;
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/noto-sans-math-400.woff2") format("woff2");
+  unicode-range: U+0391-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F5, U+2026, U+2190-2199, U+21D0-21D4, U+2208-2209, U+2218, U+221E, U+2220, U+2225, U+2245, U+2248, U+2260-2261, U+2264-2265, U+2282-2286, U+22A5, U+22C5, U+25B3;
+}
+
+/* Griechisch aus Comfortaa (etwas kleiner gesetzt, steht nach den Noto-Regeln und gewinnt dort, wo beide Schriften das Zeichen haben) */
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-400.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-400.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-700.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}
+@font-face {
+  font-family: KaTeX_Main;
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-700.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}
+@font-face {
+  font-family: KaTeX_Math;
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-400.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}
+@font-face {
+  font-family: KaTeX_Math;
+  font-style: italic;
+  font-weight: 700;
+  font-display: block;
+  src: url("../fonts/comfortaa-greek-700.woff2") format("woff2");
+  size-adjust: 88%;
+  unicode-range: U+0391-03A9, U+03B1-03C9;
+}

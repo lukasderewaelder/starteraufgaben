@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   defaultFormat: DEFAULT_FORMAT,
   defaultSolutionStyle: 'leer',
   formulaEditor: true, // Formel-Knopf öffnet den visuellen Editor (MathLive); aus = `$…$` selbst tippen
+  formulaFontMatch: true, // Formelschrift wie das Blatt (Comic Neue); aus = klassische Mathe-Schrift (siehe mathfont.css)
+  thousandsSeparator: true, // Zahlen ab 5 Stellen in Formeln automatisch mit kleinem Abstand (12 345); nur Anzeige
   lastBankKlassenstufe: '', // zuletzt beim „In Bank speichern“ gewählt (Vorbelegung)
   lastBankThema: '',
   lastGeneratorType: 'arith', // Zufallsaufgaben: zuletzt benutzter Typ und die Einstellungen je Typ (nie verändern, nur ersetzen)

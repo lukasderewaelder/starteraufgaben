@@ -69,7 +69,7 @@ async function renderCanvas(sheetEl, size, scales) {
         scrollY: 0,
         backgroundColor: '#ffffff',
         logging: false,
-        onclone: (doc) => {
+        onclone: async (doc) => {
           const clone = doc.getElementById(sheetEl.id);
           if (!clone) return;
           // Klon aus Vorschau-Rahmen lösen: ungeskaliert, links oben, nichts anderes im Bild.
@@ -85,6 +85,9 @@ async function renderCanvas(sheetEl, size, scales) {
           clone.style.transform = 'none';
           clone.style.margin = '0';
           clone.querySelectorAll('.is-overflow').forEach((c) => c.classList.remove('is-overflow')); // Warnmarken gehören nicht aufs Papier
+          // Der Klon ist ein eigenes Dokument und lädt die Schriften erst bei Bedarf. Html2canvas misst die Zeilen danach:
+          // ohne fertige Formelschriften säßen die Variablen (x, a, r …) zu hoch und zu groß.
+          await loadFormulaFonts(clone, doc);
         },
       });
       if (!canvas.width || !canvas.height) throw new PdfExportError('Leeres Bild (Größe 0)');
@@ -99,6 +102,15 @@ async function renderCanvas(sheetEl, size, scales) {
   );
 }
 
+/** Die Schriften der Formeln (auch die Ergänzungen aus mathfont*.css) sind sicher geladen, bevor das Blatt fotografiert wird. */
+async function loadFormulaFonts(sheetEl, doc = document) {
+  const text = [...sheetEl.querySelectorAll('.katex')].map((el) => el.textContent).join('');
+  if (!text || !doc.fonts?.load) return;
+  const faces = ['32px KaTeX_Main', 'italic 32px KaTeX_Main', 'bold 32px KaTeX_Main', 'italic 32px KaTeX_Math', 'italic bold 32px KaTeX_Math'];
+  await Promise.all(faces.map((face) => doc.fonts.load(face, text).catch(() => [])));
+  await doc.fonts.ready;
+}
+
 /**
  * Erzeugt das PDF. Gibt { blob, scale, ms, canvasPx } zurück.
  * Skalierungen werden der Reihe nach versucht (hohe Auflösung zuerst), damit schwächere Geräte
@@ -108,6 +120,7 @@ export async function createPdf(sheetEl, formatId, { quality = 0.92, scales = [2
   const started = performance.now();
   const size = pageSize(formatId);
   await ensureLibs();
+  await loadFormulaFonts(sheetEl);
   if (document.fonts?.ready) await document.fonts.ready;
 
   const { canvas, scale } = await renderCanvas(sheetEl, size, scales);
