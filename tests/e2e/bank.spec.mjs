@@ -276,7 +276,7 @@ test('Auswahl ist auf die freien Plätze begrenzt; bei vollem Blatt öffnet sich
   await page.waitForSelector('#dlg-pick[open] .bank-card');
   await page.locator('#pick-list .bank-open').nth(0).click();
   await page.locator('#pick-list .bank-open').nth(1).click();
-  assert.match(await page.textContent('#pick-note'), /nur noch 1 Aufgaben/);
+  assert.match(await page.textContent('#pick-note'), /Blatt ist voll/);
   assert.equal(await page.textContent('#pick-ok'), 'Hinzufügen (1)');
   await page.click('#pick-ok');
   await page.waitForSelector('#dlg-pick', { state: 'hidden' });

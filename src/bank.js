@@ -1,4 +1,5 @@
 // Aufgabenbank: Datenmodell, Filter und Hilfen. Reine Funktionen (kein DOM, kein Speicher) – gut testbar.
+import { normalizeSpec } from './generators/index.js';
 import { uid } from './model.js';
 
 export const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
@@ -23,11 +24,16 @@ export const SUGGESTED_TOPICS = [
 
 const LIMITS = { text: 5000, topic: 80, tag: 30, tags: 12 };
 
-export function newBankItem({ text = '', imageId = null, klassenstufe = '', thema = '', tags = [], solution = '', now = Date.now() } = {}) {
+/**
+ * `generator`: bei Vorlagen die Beschreibung der Zufallsaufgabe (siehe generators/index.js), sonst null.
+ * Bei Vorlagen ist `text` nur ein Beispiel; beim Einfügen ins Blatt werden neue Zahlen gewürfelt.
+ */
+export function newBankItem({ text = '', imageId = null, klassenstufe = '', thema = '', tags = [], solution = '', generator = null, now = Date.now() } = {}) {
   return {
     id: uid(),
     text,
     imageId,
+    generator: normalizeSpec(generator),
     klassenstufe: GRADES.includes(klassenstufe) ? klassenstufe : '',
     thema: String(thema).trim().slice(0, LIMITS.topic),
     tags: cleanTags(tags),
@@ -63,6 +69,7 @@ export function normalizeBankItem(raw, { now = Date.now() } = {}) {
     id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 100) : uid(),
     text: typeof raw.text === 'string' ? raw.text.slice(0, LIMITS.text) : '',
     imageId: typeof raw.imageId === 'string' && raw.imageId ? raw.imageId : null,
+    generator: normalizeSpec(raw.generator),
     klassenstufe: GRADES.includes(raw.klassenstufe) ? raw.klassenstufe : '',
     thema: typeof raw.thema === 'string' ? raw.thema.trim().slice(0, LIMITS.topic) : '',
     tags: cleanTags(raw.tags),
@@ -131,10 +138,16 @@ export function topicSuggestions(items) {
   return [...used, ...SUGGESTED_TOPICS.filter((t) => !used.includes(t))];
 }
 
-/** Gibt eine Aufgabe mit gleichem Text und Bild zurück (damit „In Bank speichern“ nichts doppelt anlegt). */
+/** Gibt eine Aufgabe mit gleichem Text und Bild zurück (damit „In Bank speichern“ nichts doppelt anlegt). Vorlagen zählen nicht. */
 export function findDuplicate(items, text, imageId = null) {
   const norm = (t) => String(t).replace(/\s+/g, ' ').trim();
-  return items.find((i) => norm(i.text) === norm(text) && (i.imageId ?? null) === (imageId ?? null)) ?? null;
+  return items.find((i) => !i.generator && norm(i.text) === norm(text) && (i.imageId ?? null) === (imageId ?? null)) ?? null;
+}
+
+/** Gibt eine Vorlage mit denselben Einstellungen zurück (die Zufallszahlen im Beispieltext spielen keine Rolle). */
+export function findTemplate(items, spec) {
+  const key = JSON.stringify(normalizeSpec(spec));
+  return items.find((i) => i.generator && JSON.stringify(i.generator) === key) ?? null;
 }
 
 export const imageIdsOfBank = (items) => items.map((i) => i.imageId).filter(Boolean);

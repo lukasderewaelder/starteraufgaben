@@ -2,6 +2,7 @@
 import { applyPrintPageSize, canSharePdf, createPdf, downloadPdf, openPdf, pdfFile, printSheet, safeFilename, sharePdf } from './export-pdf.js';
 import { autoFit } from './fit.js';
 import { FORMATS } from './formats.js';
+import { describeSpec, generateTasks, rollTask } from './generators/index.js';
 import { History } from './history.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
 import { MAX_TASKS, WEIGHTS, duplicateTask, imageIdsOf, moveTask, newTask } from './model.js';
@@ -177,6 +178,8 @@ export function createEditor(app) {
     if (url) $('#img-thumb').src = url;
     $('#btn-image-remove').hidden = !task.imageId;
     $('#lbl-image').textContent = task.imageId ? 'Bild ersetzen' : 'Bild hinzufügen';
+    $('#task-gen').hidden = !task.generator;
+    if (task.generator) $('#task-gen-desc').textContent = describeSpec(task.generator);
     $('#btn-task-prev').disabled = selected === 0;
     $('#btn-task-next').disabled = selected === sheet.tasks.length - 1;
     $('#btn-task-up').disabled = selected === 0;
@@ -350,17 +353,76 @@ export function createEditor(app) {
   $('#btn-add-task').addEventListener('click', addTask);
 
   // Aufgaben aus der Aufgabenbank übernehmen (als Kopien; das Blatt bleibt unabhängig von der Bank).
+  // Zufalls-Vorlagen würfeln dabei frische Zahlen.
+  function tasksFromBankItem(item) {
+    if (!item.generator) return [newTask(item.text, { imageId: item.imageId, solution: item.solution })];
+    const { tasks } = generateTasks(item.generator);
+    return tasks.map((t) => newTask(t.text, { solution: t.solution, generator: t.generator }));
+  }
+
   $('#btn-bank-pick').addEventListener('click', async () => {
     const room = MAX_TASKS - sheet.tasks.length;
     const items = await app.pickFromBank({ room });
     if (!items?.length || !sheet) return;
     const first = sheet.tasks.length;
-    for (const item of items) sheet.tasks.push({ ...newTask(item.text), imageId: item.imageId, solution: item.solution });
+    for (const item of items) {
+      for (const task of tasksFromBankItem(item)) if (sheet.tasks.length < MAX_TASKS) sheet.tasks.push(task);
+    }
+    const added = sheet.tasks.length - first;
+    if (!added) {
+      toast('Mit den Einstellungen der Vorlage lässt sich keine Aufgabe erzeugen.');
+      return;
+    }
     await loadImages(sheet);
     renderAll();
     selectTask(first, { focus: false });
     commit();
-    toast(items.length === 1 ? 'Aufgabe aus der Bank hinzugefügt.' : `${items.length} Aufgaben aus der Bank hinzugefügt.`);
+    toast(added === 1 ? 'Aufgabe aus der Bank hinzugefügt.' : `${added} Aufgaben aus der Bank hinzugefügt.`);
+  });
+
+  // Zufallsaufgaben: neue Aufgaben erzeugen, einzelne neu würfeln, Einstellungen ändern.
+  $('#btn-gen').addEventListener('click', async () => {
+    const room = MAX_TASKS - sheet.tasks.length;
+    if (room <= 0) {
+      toast(`Mehr als ${MAX_TASKS} Aufgaben passen nicht auf ein Blatt.`);
+      return;
+    }
+    const result = await app.generator.open({ mode: 'add', room, sheet });
+    if (!result || !sheet) return;
+    const first = sheet.tasks.length;
+    for (const t of result.tasks) sheet.tasks.push(newTask(t.text, { solution: t.solution, generator: t.generator }));
+    renderAll();
+    selectTask(first, { focus: false });
+    commit();
+    toast(result.tasks.length === 1 ? 'Zufallsaufgabe hinzugefügt.' : `${result.tasks.length} Zufallsaufgaben hinzugefügt.`);
+  });
+
+  function replaceTaskContent(task, next) {
+    task.text = next.text;
+    task.solution = next.solution;
+    task.generator = next.generator;
+    text.value = task.text;
+    afterPatch(patchTaskText(sheetEl, sheet, selected));
+    fillTaskForm({ keepText: true });
+    commit();
+  }
+
+  $('#btn-reroll').addEventListener('click', () => {
+    const task = sheet.tasks[selected];
+    const next = task?.generator ? rollTask(task.generator) : null;
+    if (!next) {
+      toast('Mit diesen Einstellungen lässt sich keine Aufgabe erzeugen.');
+      return;
+    }
+    replaceTaskContent(task, next);
+  });
+
+  $('#btn-gen-edit').addEventListener('click', async () => {
+    const task = sheet.tasks[selected];
+    if (!task?.generator) return;
+    const result = await app.generator.open({ mode: 'edit-task', spec: task.generator, sheet });
+    if (!result || !sheet?.tasks[selected]) return;
+    replaceTaskContent(sheet.tasks[selected], result.tasks[0]);
   });
   $('#btn-task-bank').addEventListener('click', () => {
     if (sheet?.tasks[selected]) app.saveToBank(sheet.tasks[selected], sheet);

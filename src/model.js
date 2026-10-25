@@ -1,5 +1,6 @@
 // Datenmodell: Blätter und Aufgaben. Reine Funktionen (kein DOM, kein Speicher) – gut testbar.
 import { DEFAULT_FORMAT, FORMATS } from './formats.js';
+import { normalizeSpec } from './generators/index.js';
 
 export const SCHEMA_VERSION = 1;
 export const SOLUTION_STYLE_IDS = ['leer', 'kariert', 'liniert', 'punkte'];
@@ -26,6 +27,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   formulaEditor: true, // Formel-Knopf öffnet den visuellen Editor (MathLive); aus = `$…$` selbst tippen
   lastBankKlassenstufe: '', // zuletzt beim „In Bank speichern“ gewählt (Vorbelegung)
   lastBankThema: '',
+  lastGeneratorType: 'arith', // Zufallsaufgaben: zuletzt benutzter Typ und die Einstellungen je Typ (nie verändern, nur ersetzen)
+  generatorMemory: {},
   // Sicherungs-Erinnerung (siehe backup.js)
   lastBackupAt: 0,
   changesSinceBackup: 0,
@@ -33,8 +36,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   reminderSnoozedUntil: 0,
 });
 
-export function newTask(text = '') {
-  return { id: uid(), text, imageId: null, solutionStyle: null, weight: 1, solution: '' };
+/** `generator`: Beschreibung einer Zufallsaufgabe (siehe generators/index.js) oder null; `solution`: Lösung, falls bekannt. */
+export function newTask(text = '', extra = {}) {
+  return { id: uid(), text, imageId: null, solutionStyle: null, weight: 1, solution: '', generator: null, ...extra };
 }
 
 export function newSheet({ number = '1', settings = DEFAULT_SETTINGS, taskTexts = ['', '', '', ''], now = Date.now() } = {}) {
@@ -86,6 +90,7 @@ export function normalizeSheet(raw, { now = Date.now() } = {}) {
       solutionStyle: SOLUTION_STYLE_IDS.includes(t?.solutionStyle) ? t.solutionStyle : null,
       weight: WEIGHTS.includes(t?.weight) ? t.weight : 1,
       solution: str(t?.solution, LIMITS.text),
+      generator: normalizeSpec(t?.generator),
     })),
     createdAt: Number.isFinite(raw.createdAt) ? raw.createdAt : now,
     updatedAt: Number.isFinite(raw.updatedAt) ? raw.updatedAt : now,

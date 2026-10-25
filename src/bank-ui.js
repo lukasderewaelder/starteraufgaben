@@ -1,5 +1,6 @@
-// Aufgabenbank: Ansicht (Liste + Bearbeiten), Auswahl-Dialog für den Blatt-Editor und „In Bank speichern“.
-import { GRADES, facets, filterBank, findDuplicate, gradeFromClass, newBankItem, parseTags, sortBank, topicSuggestions } from './bank.js';
+﻿// Aufgabenbank: Ansicht (Liste + Bearbeiten), Auswahl-Dialog für den Blatt-Editor und „In Bank speichern“.
+import { GRADES, facets, filterBank, findDuplicate, findTemplate, gradeFromClass, newBankItem, parseTags, sortBank, topicSuggestions } from './bank.js';
+import { describeSpec, rollTask, taskCount } from './generators/index.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
 import { markupToHtml } from './markup.js';
 import { uid } from './model.js';
@@ -94,6 +95,7 @@ function buildCard(item, { selectable = false, selected = false, highlighted = f
   }
   const meta = document.createElement('div');
   meta.className = 'bank-meta';
+  if (item.generator) meta.append(pill('Zufallsvorlage', 'grade'));
   if (item.klassenstufe) meta.append(pill(gradeLabel(item.klassenstufe), 'grade'));
   if (item.thema) meta.append(pill(item.thema));
   item.tags.forEach((t) => meta.append(pill(`#${t}`)));
@@ -193,6 +195,11 @@ export function createBankUi(app) {
   }
 
   function fillEditor() {
+    const template = Boolean(current.generator);
+    $('#bank-template').hidden = !template;
+    $('#bank-text-block').hidden = template;
+    $('#bank-image-block').hidden = template;
+    if (template) $('#bank-template-desc').textContent = describeSpec(current.generator);
     text.value = current.text;
     $('#bank-f-grade').value = current.klassenstufe;
     $('#bank-f-topic').value = current.thema;
@@ -231,7 +238,7 @@ export function createBankUi(app) {
     current = null;
     editor.hidden = true;
     grid.querySelector(`.bank-card[data-id="${item.id}"]`)?.classList.remove('selected');
-    if (!item.text.trim() && !item.imageId) {
+    if (!item.generator && !item.text.trim() && !item.imageId) {
       await app.store.deleteBankItem(item.id);
       app.bank = app.bank.filter((i) => i.id !== item.id);
       await renderList();
@@ -290,6 +297,48 @@ export function createBankUi(app) {
     await app.store.saveBankItem(item);
     await renderList();
     await openEditor(item.id, { focus: true });
+  });
+
+  // Zufallsvorlagen: neu anlegen, Einstellungen ändern, neues Beispiel würfeln
+  $('#bank-new-template').addEventListener('click', async () => {
+    const result = await app.generator.open({ mode: 'template' });
+    if (!result) return;
+    const item = newBankItem({
+      text: result.tasks[0].text,
+      generator: result.spec,
+      klassenstufe: filters.state.klassenstufe,
+      thema: filters.state.thema,
+      tags: filters.state.tag ? [filters.state.tag] : [],
+    });
+    app.bank.unshift(item);
+    await app.store.saveBankItem(item);
+    app.noteChange();
+    await renderList();
+    refreshTopicList();
+    await openEditor(item.id);
+  });
+
+  $('#bank-template-edit').addEventListener('click', async () => {
+    if (!current?.generator) return;
+    const id = current.id;
+    const result = await app.generator.open({ mode: 'template', spec: current.generator });
+    if (!result || current?.id !== id) return;
+    current.generator = result.spec;
+    current.text = result.tasks[0].text;
+    fillEditor();
+    touch();
+  });
+
+  $('#bank-template-roll').addEventListener('click', () => {
+    if (!current?.generator) return;
+    const sample = rollTask(current.generator);
+    if (!sample) {
+      toast('Mit diesen Einstellungen lässt sich keine Aufgabe erzeugen.');
+      return;
+    }
+    current.text = sample.text;
+    $('#bank-preview').innerHTML = markupToHtml(current.text);
+    touch();
   });
 
   $('#bank-dup').addEventListener('click', async () => {
@@ -371,11 +420,18 @@ export function createBankUi(app) {
     onChange: () => renderPick(),
   });
 
+  // Zufallsvorlagen mit „einzelnen Aufgaben“ belegen mehrere Plätze auf dem Blatt.
+  const weightOf = (id) => {
+    const item = app.bank.find((i) => i.id === id);
+    return item?.generator ? taskCount(item.generator) : 1;
+  };
+  const usedPlaces = () => picked.reduce((sum, id) => sum + weightOf(id), 0);
+
   function updatePickNote(message = '') {
     const ok = $('#pick-ok');
     ok.disabled = picked.length === 0;
     ok.textContent = picked.length ? `Hinzufügen (${picked.length})` : 'Hinzufügen';
-    $('#pick-note').textContent = message || `${picked.length} ausgewählt – auf dem Blatt ist noch Platz für ${pickLimit}.`;
+    $('#pick-note').textContent = message || `${picked.length} ausgewählt – auf dem Blatt ist noch Platz für ${pickLimit - usedPlaces()}.`;
   }
 
   async function renderPick() {
@@ -395,8 +451,9 @@ export function createBankUi(app) {
     const id = open.dataset.id;
     if (picked.includes(id)) {
       picked = picked.filter((x) => x !== id);
-    } else if (picked.length >= pickLimit) {
-      updatePickNote(pickLimit ? `Es passen nur noch ${pickLimit} Aufgaben aufs Blatt.` : 'Das Blatt ist voll.');
+    } else if (usedPlaces() + weightOf(id) > pickLimit) {
+      const left = pickLimit - usedPlaces();
+      updatePickNote(left > 0 ? `Es passen nur noch ${left} Aufgaben aufs Blatt.` : 'Das Blatt ist voll.');
       return;
     } else {
       picked.push(id);
@@ -462,13 +519,15 @@ export function createBankUi(app) {
 
   /** Fragt Klassenstufe/Thema/Schlagwörter ab und legt eine Kopie der Aufgabe in der Bank an. */
   async function saveTask(task, sheet) {
-    if (!task.text.trim() && !task.imageId) {
+    const template = Boolean(task.generator);
+    if (!template && !task.text.trim() && !task.imageId) {
       toast('Die Aufgabe ist noch leer.');
       return null;
     }
     await app.refreshBank();
-    if (findDuplicate(app.bank, task.text, task.imageId)) {
-      toast('Diese Aufgabe ist schon in der Aufgabenbank.');
+    if (template ? findTemplate(app.bank, task.generator) : findDuplicate(app.bank, task.text, task.imageId)) {
+      // Im Auswahl-Dialog (modal) wäre ein Toast verdeckt – dort zeigt der Aufrufer selbst eine Meldung.
+      toast(template ? 'Diese Zufallsvorlage ist schon in der Aufgabenbank.' : 'Diese Aufgabe ist schon in der Aufgabenbank.');
       return null;
     }
     refreshTopicList();
@@ -482,7 +541,7 @@ export function createBankUi(app) {
     saveDialog.showModal();
     const meta = await answer;
     if (!meta) return null;
-    const item = newBankItem({ text: task.text, imageId: task.imageId, solution: task.solution, ...meta });
+    const item = newBankItem({ text: task.text, imageId: task.imageId, solution: task.solution, generator: task.generator ?? null, ...meta });
     await app.store.saveBankItem(item);
     app.bank = [item, ...app.bank];
     app.noteChange();

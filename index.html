@@ -70,6 +70,7 @@
       <h1 class="brand">Aufgabenbank</h1>
       <span class="spacer"></span>
       <span id="bank-save-state" class="save-state" role="status"></span>
+      <button type="button" id="bank-new-template" class="btn">+ Zufallsvorlage</button>
       <button type="button" id="bank-new" class="btn btn-primary">+ Neue Aufgabe</button>
     </header>
     <main class="bank">
@@ -92,17 +93,28 @@
             <h2>Aufgabe bearbeiten</h2>
             <button type="button" id="bank-close" class="btn btn-small">Fertig</button>
           </div>
-          <div class="toolbar" role="toolbar" aria-label="Formatierung">
-            <button type="button" class="btn tb" data-tool="bold" aria-label="Fett" title="Fett"><b>F</b></button>
-            <button type="button" class="btn tb" data-tool="italic" aria-label="Kursiv" title="Kursiv"><i>K</i></button>
-            <button type="button" class="btn tb" data-tool="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
-            <button type="button" class="btn tb" data-tool="sub" aria-label="Teilaufgaben a) b) c)" title="Teilaufgaben a) b) c)">a)</button>
-            <button type="button" class="btn tb" data-tool="list" aria-label="Aufzählung" title="Aufzählung">•</button>
-            <button type="button" class="btn tb tb-math" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen oder ändern">∑ Formel</button>
+          <div id="bank-template" class="gen-box" hidden>
+            <p class="gen-box-title">Zufallsvorlage</p>
+            <p id="bank-template-desc" class="muted"></p>
+            <p class="muted">Beim Einfügen ins Blatt werden jedes Mal neue Zahlen gewürfelt. Die Vorschau unten ist nur ein Beispiel.</p>
+            <div class="btn-row">
+              <button type="button" class="btn" id="bank-template-edit">Einstellungen …</button>
+              <button type="button" class="btn" id="bank-template-roll">Neues Beispiel</button>
+            </div>
           </div>
-          <div class="field">
-            <label for="bank-text" class="sr-only">Aufgabentext</label>
-            <textarea id="bank-text" rows="5" placeholder="Aufgabe eingeben …"></textarea>
+          <div id="bank-text-block">
+            <div class="toolbar" role="toolbar" aria-label="Formatierung">
+              <button type="button" class="btn tb" data-tool="bold" aria-label="Fett" title="Fett"><b>F</b></button>
+              <button type="button" class="btn tb" data-tool="italic" aria-label="Kursiv" title="Kursiv"><i>K</i></button>
+              <button type="button" class="btn tb" data-tool="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
+              <button type="button" class="btn tb" data-tool="sub" aria-label="Teilaufgaben a) b) c)" title="Teilaufgaben a) b) c)">a)</button>
+              <button type="button" class="btn tb" data-tool="list" aria-label="Aufzählung" title="Aufzählung">•</button>
+              <button type="button" class="btn tb tb-math" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen oder ändern">∑ Formel</button>
+            </div>
+            <div class="field">
+              <label for="bank-text" class="sr-only">Aufgabentext</label>
+              <textarea id="bank-text" rows="5" placeholder="Aufgabe eingeben …"></textarea>
+            </div>
           </div>
           <div class="task-preview" id="bank-preview" aria-label="Vorschau"></div>
           <div class="field-row">
@@ -110,7 +122,7 @@
             <div class="field"><label for="bank-f-topic">Thema</label><input id="bank-f-topic" type="text" list="topic-list" autocomplete="off"></div>
           </div>
           <div class="field"><label for="bank-f-tags">Schlagwörter (mit Komma trennen)</label><input id="bank-f-tags" type="text" autocomplete="off"></div>
-          <div class="field image-field">
+          <div class="field image-field" id="bank-image-block">
             <span class="label">Bild</span>
             <div class="image-row">
               <img id="bank-thumb" alt="" hidden>
@@ -150,6 +162,7 @@
       <div class="task-bar">
         <div id="task-chips" class="chips" role="group" aria-label="Aufgabe auswählen"></div>
         <div class="btn-row">
+          <button type="button" id="btn-gen" class="btn">Zufallsaufgabe …</button>
           <button type="button" id="btn-bank-pick" class="btn">Aus Bank …</button>
           <button type="button" id="btn-add-task" class="btn">+ Aufgabe</button>
         </div>
@@ -193,6 +206,14 @@
             <div class="btn-row">
               <button type="button" class="btn btn-icon" id="btn-task-prev" aria-label="Vorherige Aufgabe">‹</button>
               <button type="button" class="btn btn-icon" id="btn-task-next" aria-label="Nächste Aufgabe">›</button>
+            </div>
+          </div>
+          <div id="task-gen" class="gen-box" hidden>
+            <p class="gen-box-title">Zufallsaufgabe</p>
+            <p id="task-gen-desc" class="muted"></p>
+            <div class="btn-row">
+              <button type="button" class="btn" id="btn-reroll">Neu würfeln</button>
+              <button type="button" class="btn" id="btn-gen-edit">Einstellungen …</button>
             </div>
           </div>
           <div class="toolbar" role="toolbar" aria-label="Formatierung">
@@ -280,6 +301,40 @@
       <button type="button" class="btn btn-danger" id="c-del">Löschen</button>
     </div>
     <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-gen" class="wide" aria-labelledby="gen-title">
+    <h2 id="gen-title">Zufallsaufgaben</h2>
+    <div class="gen-grid">
+      <div class="gen-form">
+        <div class="field"><label for="gen-type">Aufgabentyp</label><select id="gen-type"></select></div>
+        <div id="gen-params"></div>
+        <div class="field-row" id="gen-layout-row">
+          <div class="field"><label for="gen-count">Anzahl</label><input id="gen-count" type="number" min="1" max="8" step="1" inputmode="numeric"></div>
+          <div class="field">
+            <label for="gen-layout">Aufbau</label>
+            <select id="gen-layout">
+              <option value="parts">Teilaufgaben a), b), …</option>
+              <option value="single">Einzelne Aufgaben</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="gen-preview-col">
+        <div class="pane-head">
+          <h3>Vorschau</h3>
+          <button type="button" id="gen-reroll" class="btn btn-small">Alle neu würfeln</button>
+        </div>
+        <p id="gen-note" class="muted" role="status"></p>
+        <div id="gen-preview" class="gen-preview"></div>
+      </div>
+    </div>
+    <div class="dialog-foot gen-foot">
+      <button type="button" class="btn" id="gen-template">Als Vorlage in die Bank</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="button" class="btn btn-primary" id="gen-ok">Hinzufügen</button>
+    </div>
   </dialog>
 
   <dialog id="dlg-pick" aria-labelledby="pick-title" class="wide">

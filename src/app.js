@@ -7,6 +7,7 @@ import { collectDiagnostics, diagnosticsToText } from './diagnose.js';
 import { createEditor } from './editor.js';
 import { FORMATS } from './formats.js';
 import { createFormulaDialog } from './formula.js';
+import { createGeneratorDialog } from './gen-ui.js';
 import { createLibrary } from './library.js';
 import { duplicateSheet, imageIdsOf, newSheet, nextNumber } from './model.js';
 import { SOLUTION_STYLES } from './sheet.js';
@@ -190,6 +191,7 @@ export async function startApp() {
   // --- Start --------------------------------------------------------------------------------
   app.backup = createBackupUi(app);
   app.formula = createFormulaDialog();
+  app.generator = createGeneratorDialog(app);
   editor = createEditor(app);
   library = createLibrary(app);
   bank = createBankUi(app);

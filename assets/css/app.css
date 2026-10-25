@@ -461,6 +461,29 @@ dialog.wide { width: min(94vw, 900px); }
 .task-preview .txt { flex: 1; min-width: 0; }
 .task-preview .katex { font-size: 1.1em; }
 
+/* --- Zufallsaufgaben -------------------------------------------------------------------- */
+.gen-box { margin: 0 0 14px; padding: 12px 14px; background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: 0.6rem; }
+.gen-box p { margin: 0 0 6px; }
+.gen-box-title { font-weight: 700; color: var(--blue-700); }
+.gen-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@media (min-width: 780px) { .gen-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); } }
+.gen-form .field-row { gap: 10px; align-items: end; }
+.gen-form .field-row .field { margin-bottom: 0.9rem; }
+.gen-form .check { align-items: flex-start; line-height: 1.3; padding: 6px 0; }
+.gen-form small { display: block; margin-top: 2px; }
+.gen-preview-col h3 { margin: 0; font-size: 1rem; }
+.gen-preview { max-height: 46vh; overflow: auto; padding: 4px 2px; }
+.gen-instruction { margin-bottom: 8px; font-weight: 700; border-style: solid; }
+.gen-item { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto; gap: 6px 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+.gen-label { font-weight: 700; padding-top: 6px; }
+.gen-text.task-preview { margin: 0; border: 0; padding: 4px 0; background: none; }
+.gen-solution { font-size: 0.85rem; color: var(--gray-500); }
+.gen-solution .ln { display: inline; }
+.gen-solution .katex { font-size: 1em; }
+.gen-foot { display: flex; align-items: center; flex-wrap: wrap; }
+dialog#dlg-gen { max-height: 94vh; overflow: auto; }
+.pill-btn[hidden], [data-key][hidden] { display: none !important; }
+
 .notes { margin: 0 0 12px; padding-left: 1.2rem; font-size: 0.9rem; color: var(--gray-600); }
 #backup-status { margin-bottom: 8px; white-space: pre-line; }
 

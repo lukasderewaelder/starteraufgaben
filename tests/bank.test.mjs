@@ -5,6 +5,7 @@ import {
   facets,
   filterBank,
   findDuplicate,
+  findTemplate,
   gradeFromClass,
   matchesQuery,
   newBankItem,
@@ -13,6 +14,7 @@ import {
   sortBank,
   topicSuggestions,
 } from '../src/bank.js';
+import { normalizeSpec } from '../src/generators/index.js';
 
 const mk = (over) => ({ ...newBankItem({ text: 'x' }), ...over });
 
@@ -103,6 +105,31 @@ test('Doppelte erkennen: gleicher Text (Leerraum egal) und gleiches Bild', () =>
   assert.equal(findDuplicate(items, 'Mit Bild'), null);
   assert.equal(findDuplicate(items, 'Mit Bild', 'i')?.id, 2);
   assert.equal(findDuplicate(items, 'ganz anders'), null);
+});
+
+test('Vorlagen: Beschreibung wird bereinigt, kaputte Beschreibungen fallen weg', () => {
+  const spec = { type: 'fraction-reduce', params: { min: 4, max: 99999999, improper: 'ja' }, count: 50, layout: 'komisch' };
+  const item = newBankItem({ text: 'Beispiel', generator: spec });
+  assert.equal(item.generator.type, 'fraction-reduce');
+  assert.equal(item.generator.params.max, 1_000_000);
+  assert.equal(item.generator.params.improper, false);
+  assert.equal(item.generator.count, 8);
+  assert.equal(item.generator.layout, 'parts');
+  assert.equal(newBankItem({ generator: { type: 'gibt-es-nicht' } }).generator, null);
+  assert.equal(normalizeBankItem({ id: 'x', text: 'a', generator: 'quatsch' }).generator, null);
+  const restored = normalizeBankItem(JSON.parse(JSON.stringify(item)));
+  assert.deepEqual(restored.generator, item.generator);
+});
+
+test('Vorlagen werden nicht mit gewöhnlichen Aufgaben verwechselt; gleiche Einstellungen = gleiche Vorlage', () => {
+  const a = { type: 'arith', params: { min: 1, max: 20, decimals: 1 }, count: 4, layout: 'parts' };
+  const template = mk({ id: 't', text: 'Berechne: $3,5 + 2,5$', generator: normalizeSpec(a) });
+  const plain = mk({ id: 'p', text: 'Berechne: $3,5 + 2,5$' });
+  assert.equal(findDuplicate([template], 'Berechne: $3,5 + 2,5$'), null, 'Vorlage ist kein Duplikat einer Aufgabe');
+  assert.equal(findDuplicate([template, plain], 'Berechne: $3,5 + 2,5$')?.id, 'p');
+  assert.equal(findTemplate([plain, template], a)?.id, 't');
+  assert.equal(findTemplate([plain, template], { ...a, params: { ...a.params, max: 30 } }), null);
+  assert.equal(findTemplate([plain], a), null);
 });
 
 test('sortBank: zuletzt geändert zuerst, Original bleibt unverändert', () => {

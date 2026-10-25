@@ -74,6 +74,23 @@ test('normalizeSheet begrenzt die Aufgabenzahl und behält gültige Daten', () =
   assert.equal(ok.tasks[0].solutionStyle, 'punkte');
 });
 
+test('Zufallsaufgaben im Blatt: Beschreibung bleibt erhalten, kaputte wird entfernt, Lösung wird mitgeführt', () => {
+  const spec = { type: 'percent', params: { kind: 'rate', min: 20, max: 300 }, count: 2, layout: 'parts' };
+  const s = normalizeSheet({ tasks: [{ text: 'a', solution: 'b', generator: spec }, { text: 'c', generator: { type: 'nix' } }, { text: 'd', generator: 5 }] });
+  assert.equal(s.tasks[0].generator.type, 'percent');
+  assert.equal(s.tasks[0].generator.params.kind, 'rate');
+  assert.equal(s.tasks[0].solution, 'b');
+  assert.equal(s.tasks[1].generator, null);
+  assert.equal(s.tasks[2].generator, null);
+  const copy = duplicateSheet(s);
+  assert.deepEqual(copy.tasks[0].generator, s.tasks[0].generator);
+  copy.tasks[0].generator.params.max = 5;
+  assert.equal(s.tasks[0].generator.params.max, 300, 'Kopie ist unabhängig');
+  assert.deepEqual(duplicateTask(s.tasks[0]).generator, s.tasks[0].generator);
+  assert.equal(newTask('x').generator, null);
+  assert.equal(newTask('x', { solution: 'y', generator: spec }).solution, 'y');
+});
+
 test('nextNumber: größte Zahl + 1, Text-Nummern zählen nicht', () => {
   assert.equal(nextNumber([]), '1');
   assert.equal(nextNumber([{ number: '3' }, { number: '12' }, { number: 'Test' }]), '13');
