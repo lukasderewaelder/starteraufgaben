@@ -23,6 +23,7 @@ export function todayIso(now = new Date()) {
 export const DEFAULT_SETTINGS = Object.freeze({
   defaultFormat: DEFAULT_FORMAT,
   defaultSolutionStyle: 'leer',
+  formulaEditor: true, // Formel-Knopf öffnet den visuellen Editor (MathLive); aus = `$…$` selbst tippen
   // Sicherungs-Erinnerung (siehe backup.js)
   lastBackupAt: 0,
   changesSinceBackup: 0,

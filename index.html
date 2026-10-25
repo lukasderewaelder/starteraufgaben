@@ -131,7 +131,7 @@
             <button type="button" class="btn tb" data-tool="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
             <button type="button" class="btn tb" data-tool="sub" aria-label="Teilaufgaben a) b) c)" title="Teilaufgaben a) b) c)">a)</button>
             <button type="button" class="btn tb" data-tool="list" aria-label="Aufzählung" title="Aufzählung">•</button>
-            <button type="button" class="btn tb" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen: $…$" hidden>∑</button>
+            <button type="button" class="btn tb tb-math" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen oder ändern">∑ Formel</button>
           </div>
           <div class="field">
             <label for="f-text" class="sr-only">Aufgabentext</label>
@@ -233,7 +233,21 @@
     <div class="field"><label for="s-format">Papierformat</label><select id="s-format"></select></div>
     <div class="field"><label for="s-solution">Lösungsfeld</label><select id="s-solution"></select></div>
     <p class="muted">Gilt für neu angelegte Blätter. Einzelne Aufgaben können davon abweichen.</p>
+    <label class="check"><input type="checkbox" id="s-formula"> Visueller Formel-Editor (Knopf „∑ Formel“)</label>
+    <p class="muted">Aus: der Knopf setzt nur <code>$…$</code>, die Formel schreibst du dann selbst als LaTeX.</p>
     <div class="dialog-foot"><button type="button" class="btn btn-primary" data-close>Fertig</button></div>
+  </dialog>
+
+  <div id="math-overlay" hidden></div>
+  <dialog id="dlg-math" aria-labelledby="math-title" aria-modal="true">
+    <h2 id="math-title">Formel einfügen</h2>
+    <div id="math-host"></div>
+    <p class="muted">Am PC: <code>3/4</code> ergibt einen Bruch, <code>x^2</code> eine Hochzahl, <code>sqrt</code> eine Wurzel. Am iPad hilft die Tastatur unten.</p>
+    <label class="check"><input type="checkbox" id="math-large"> Große Darstellung (Brüche in voller Höhe)</label>
+    <div class="dialog-foot">
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="button" class="btn btn-primary" id="math-ok" disabled>Einfügen</button>
+    </div>
   </dialog>
 
   <dialog id="dlg-diag" aria-labelledby="dlg-diag-title">

@@ -6,7 +6,7 @@ import { History } from './history.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
 import { MAX_TASKS, WEIGHTS, duplicateTask, imageIdsOf, moveTask, newTask } from './model.js';
 import { SOLUTION_STYLES, fitPreview, patchHeader, patchTaskText, renderSheet } from './sheet.js';
-import { toggleList, toggleSubtasks, toggleWrap } from './text-tools.js';
+import { findMathAt, putFormula, toggleList, toggleSubtasks, toggleWrap, wrapMath } from './text-tools.js';
 import { $, fill, mb, toast } from './ui.js';
 
 export function createEditor(app) {
@@ -307,17 +307,43 @@ export function createEditor(app) {
     sub: toggleSubtasks,
     list: toggleList,
   };
+  function applyToText(result, { focus = true } = {}) {
+    text.value = result.text;
+    text.setSelectionRange(result.start, result.end);
+    if (focus) text.focus();
+    text.dispatchEvent(new Event('input'));
+  }
+
+  // Formel einfügen oder ändern: liegt der Cursor in einer Formel, wird diese im Editor geöffnet.
+  async function formulaTool() {
+    const { value, selectionStart: start, selectionEnd: end } = text;
+    if (!app.settings.formulaEditor) {
+      applyToText(wrapMath(value, start, end));
+      return;
+    }
+    const hit = findMathAt(value, start, end);
+    const wasLarge = Boolean(hit?.latex.trimStart().startsWith('\\displaystyle'));
+    const result = await app.formula.edit({
+      latex: hit ? hit.latex.replace(/^\s*\\displaystyle\s*/, '') : '',
+      large: wasLarge,
+      title: hit ? 'Formel ändern' : 'Formel einfügen',
+      confirm: hit ? 'Übernehmen' : 'Einfügen',
+    });
+    if (!result || !sheet?.tasks[selected]) return;
+    // Der Text kann sich währenddessen nicht geändert haben (Dialog ist modal); Auswahl bleibt im Feld erhalten.
+    applyToText(putFormula(text.value, start, end, result.latex, { hit, large: result.large }), { focus: false });
+  }
+
   document.querySelectorAll('.toolbar [data-tool]').forEach((button) => {
     // Fokus im Textfeld lassen, damit am iPad die Tastatur offen bleibt.
     button.addEventListener('pointerdown', (e) => e.preventDefault());
     button.addEventListener('click', () => {
+      if (button.dataset.tool === 'math') {
+        formulaTool();
+        return;
+      }
       const tool = TOOLS[button.dataset.tool];
-      if (!tool) return;
-      const result = tool(text.value, text.selectionStart, text.selectionEnd);
-      text.value = result.text;
-      text.setSelectionRange(result.start, result.end);
-      text.focus();
-      text.dispatchEvent(new Event('input'));
+      if (tool) applyToText(tool(text.value, text.selectionStart, text.selectionEnd));
     });
   });
 

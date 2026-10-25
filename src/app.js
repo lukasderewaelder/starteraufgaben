@@ -4,6 +4,7 @@ import { registerChange } from './backup.js';
 import { collectDiagnostics, diagnosticsToText } from './diagnose.js';
 import { createEditor } from './editor.js';
 import { FORMATS } from './formats.js';
+import { createFormulaDialog } from './formula.js';
 import { createLibrary } from './library.js';
 import { duplicateSheet, imageIdsOf, newSheet, nextNumber } from './model.js';
 import { SOLUTION_STYLES } from './sheet.js';
@@ -125,6 +126,8 @@ export async function startApp() {
   fill($('#s-solution'), styleEntries);
   $('#s-format').value = app.settings.defaultFormat;
   $('#s-solution').value = app.settings.defaultSolutionStyle;
+  $('#s-formula').checked = app.settings.formulaEditor;
+  $('#s-formula').addEventListener('change', (e) => app.setSettings({ formulaEditor: e.target.checked }));
   $('#s-format').addEventListener('change', (e) => app.setSettings({ defaultFormat: e.target.value }));
   $('#s-solution').addEventListener('change', (e) => app.setSettings({ defaultSolutionStyle: e.target.value }));
   app.openSettings = () => $('#dlg-settings').showModal();
@@ -167,6 +170,7 @@ export async function startApp() {
 
   // --- Start --------------------------------------------------------------------------------
   app.backup = createBackupUi(app);
+  app.formula = createFormulaDialog();
   editor = createEditor(app);
   library = createLibrary(app);
 

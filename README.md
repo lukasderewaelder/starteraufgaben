@@ -4,14 +4,15 @@ Arbeitsblätter mit Starteraufgaben (Aufgaben links, freier Lösungsbereich rech
 
 Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 
-> **Stand: Meilenstein 2 (Bibliothek und Sicherung).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen und PDF-Export; Bibliothek mit Vorschaubildern, Suche und Sortierung; Sicherung als Datei mit Erinnerung. Formel-Editor, Aufgabenbank und Generator folgen in den nächsten Meilensteinen.
+> **Stand: Meilenstein 3 (Formel-Editor).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen, PDF-Export und visuellem Formel-Editor; Bibliothek mit Vorschaubildern, Suche und Sortierung; Sicherung als Datei mit Erinnerung. Aufgabenbank und Zufalls-Generator folgen in den nächsten Meilensteinen.
 
 ## Bedienung
 
 - **Bibliothek:** Die App startet mit allen Blättern als Karten (Vorschau, Nummer, Klasse, Datum). Karte antippen = öffnen; „⋯“ an der Karte = duplizieren, als Datei sichern, löschen (mit „Rückgängig“). „‹ Bibliothek“ im Editor führt zurück.
 - **Sicherung:** „Sicherung“ oben → *Sicherung erstellen* legt eine `.json`-Datei mit allen Blättern und Bildern an (am iPad per „Teilen“ z. B. in Dateien/OneDrive, am PC als Download). *Sicherung einspielen* liest so eine Datei wieder ein: neue Blätter kommen dazu, in der Datei neuere ersetzen die lokalen, hier neuere bleiben (oder werden als Kopie übernommen). So wechseln Blätter zwischen PC und iPad. Die App erinnert nach mehreren Bearbeitungen bzw. 14 Tagen an eine Sicherung.
 - **Im Blatt antippen:** Aufgabe (Zeile) antippen → rechts erscheint „Aufgabe“ mit Text, Formatierung, Bild, Lösungsfeld und Zeilenhöhe. Titel, Nummer, Zeit usw. antippen → das passende Feld im Reiter „Blatt“.
-- **Text:** `$…$` für Formeln (z. B. `$\frac{3}{4}$`), `\$` für ein echtes Dollarzeichen, `**fett**`, `*kursiv*`, `__unterstrichen__`, Zeilen mit `a) ` als Teilaufgaben, `- ` als Aufzählung (die Knöpfe über dem Textfeld setzen das für dich).
+- **Text:** `**fett**`, `*kursiv*`, `__unterstrichen__`, Zeilen mit `a) ` als Teilaufgaben, `- ` als Aufzählung, `\$` für ein echtes Dollarzeichen (die Knöpfe über dem Textfeld setzen das für dich).
+- **Formeln:** Knopf **∑ Formel** über dem Textfeld → Formel-Editor: am iPad mit eigener Zahlen-Tastatur (Bruch `a⁄b`, Komma, `·`, `:`, `%`, Hochzahl, Wurzel, ≤ ≥ ≠), am PC auch per Tippen (`3/4` → Bruch, `x^2`, `sqrt`). „Einfügen“ setzt die Formel als `$…$` in den Text. Steht der Cursor in einer Formel, öffnet der Knopf sie zum **Ändern**. Option „Große Darstellung“ zeigt Brüche in voller Höhe. Dezimalkommas (`3,5`) werden eng gesetzt. Unter „⋯ → Voreinstellungen“ lässt sich der Editor abschalten; der Knopf setzt dann nur `$…$`, und du schreibst die Formel selbst als LaTeX (z. B. `$\frac{3}{4}$`).
 - **Zu viel Inhalt:** Die Schrift wird automatisch bis auf 70 % verkleinert; passt es danach nicht, warnt ein gelber Hinweis und die betroffene Aufgabe ist markiert (im PDF ist die Markierung nicht enthalten).
 - **PDF:** Knopf „PDF“ oben rechts → „Teilen …“ (am iPad z. B. „In GoodNotes öffnen“) oder „Herunterladen“.
 
@@ -20,11 +21,18 @@ Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 - Die App lädt **nichts von fremden Servern** (keine CDNs, keine Google Fonts, keine Statistik). Alle Bibliotheken und Schriften liegen in diesem Repo.
 - Dieses Repository ist öffentlich. Hier liegt nur der **Programmcode**. Deine Arbeitsblätter und Bilder bleiben später auf deinem Gerät (Browser-Speicher) bzw. in Sicherungsdateien, die du selbst ablegst (z. B. OneDrive).
 
-## iPad-Test (Meilenstein 2)
+## iPad-Test (Meilenstein 3)
 
 Die installierte App holt sich die neue Version selbst: beim nächsten Start erscheint oben „Eine neue Version ist bereit“ → **Jetzt aktualisieren**.
 
-Neu in diesem Meilenstein:
+Neu in diesem Meilenstein (Formel-Editor):
+
+1. Aufgabe antippen, **∑ Formel** tippen: Öffnet sich der Dialog, und fährt unten die Zahlen-Tastatur ein (Tabs 123, Symbole, abc, αβγ)?
+2. Einen Bruch tippen (`a⁄b`-Taste, Zähler, Pfeil nach rechts, Nenner), dazu ein Komma, `·` und `:` → **Einfügen**: steht die Formel im Text und im Blatt?
+3. Den Cursor in die Formel setzen, **∑ Formel** erneut: öffnet sie sich zum Ändern?
+4. Funktioniert die Eingabe auch mit angeschlossener Hardware-Tastatur und mit dem Pencil (Scribble im Textfeld)?
+
+Frühere Punkte, falls noch nicht geprüft (Meilenstein 2):
 
 1. **Bibliothek:** Zeigen die Karten Vorschaubilder? Lässt sich ein Blatt öffnen und über „‹ Bibliothek“ wieder verlassen?
 2. **Sicherung erstellen** → „Teilen / In Dateien sichern …“: lässt sich die Datei in **Dateien/OneDrive** ablegen? (Wenn „Teilen“ fehlt: „Herunterladen“.)

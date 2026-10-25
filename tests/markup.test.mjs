@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { escapeHtml, markupToHtml, splitMath } from '../src/markup.js';
+import { escapeHtml, germanDecimal, markupToHtml, splitMath } from '../src/markup.js';
 
 // Formelsatz im Test: erkennbarer Platzhalter statt KaTeX.
 const renderMath = (latex, display) => `<m${display ? ' d' : ''}>${escapeHtml(latex)}</m>`;
@@ -67,10 +67,27 @@ test('Platzhalter-Zeichen im Eingabetext können keine Formel einschleusen', () 
   assert.equal(html('x0y'), '<div class="ln">x0y</div>');
 });
 
-test('splitMath liefert die Stücke in Reihenfolge', () => {
+test('splitMath liefert die Stücke in Reihenfolge, mit Positionen und Begrenzern', () => {
   assert.deepEqual(splitMath('a $b$ c'), [
     { type: 'text', value: 'a ' },
-    { type: 'math', latex: 'b', display: false },
+    { type: 'math', latex: 'b', display: false, open: '$', close: '$', start: 2, end: 5 },
     { type: 'text', value: ' c' },
   ]);
+  const [, display, , paren] = splitMath('x $$y$$ z \\(w\\)');
+  assert.deepEqual([display.open, display.start, display.end], ['$$', 2, 7]);
+  assert.deepEqual([paren.open, paren.close, paren.start, paren.end], ['\\(', '\\)', 10, 15]);
+});
+
+test('Positionen stimmen auch nach \\$ im Text', () => {
+  const parts = splitMath('5\\$ und $x$');
+  const math = parts.find((p) => p.type === 'math');
+  assert.equal('5\\$ und $x$'.slice(math.start, math.end), '$x$');
+});
+
+test('Dezimalkomma in Formeln: Komma zwischen Ziffern ohne Leerraum, Listen bleiben', () => {
+  assert.equal(germanDecimal('3,5 + 2,25'), '3{,}5 + 2{,}25');
+  assert.equal(germanDecimal('\\frac{1,5}{2}'), '\\frac{1{,}5}{2}');
+  assert.equal(germanDecimal('f(x, y)'), 'f(x, y)');
+  assert.equal(germanDecimal('3{,}5'), '3{,}5');
+  assert.equal(germanDecimal('a,b'), 'a,b');
 });

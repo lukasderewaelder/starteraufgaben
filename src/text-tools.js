@@ -1,4 +1,5 @@
 // Textfeld-Werkzeuge für die Formatleiste: reine Funktionen auf (text, start, end) -> { text, start, end }.
+import { splitMath } from './markup.js';
 
 /** Fett/Kursiv/Unterstrichen: Auswahl mit Markierung umschließen bzw. die Markierung wieder entfernen. */
 export function toggleWrap(text, start, end, marker) {
@@ -72,6 +73,59 @@ export function toggleList(text, start, end) {
     if (allItem) return lines.map((l) => l.replace(ITEM, ''));
     return lines.map((l) => `- ${l.replace(SUB, '').replace(ITEM, '')}`);
   });
+}
+
+/** Die Formel, in der Cursor/Auswahl liegt (echt innerhalb der Begrenzer oder genau die ganze Formel); sonst null. */
+export function findMathAt(text, start, end) {
+  for (const part of splitMath(text)) {
+    if (part.type !== 'math') continue;
+    const inside = start > part.start && end < part.end;
+    const whole = start === part.start && end === part.end;
+    if (inside || whole) return part;
+  }
+  return null;
+}
+
+/** Entfernt Platzhalter-Felder des Formel-Editors (\placeholder{…}), die KaTeX nicht kennt. */
+export function cleanLatex(latex) {
+  return String(latex)
+    .replace(/\\placeholder(\[[^\]]*\])?\{[^{}]*\}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Der Editor schreibt Ein-Ziffern-Argumente ohne Klammern (\frac34, \sqrt2): für Menschen und Textfeld lesbarer mit Klammern.
+    .replace(/\\(d?t?frac)\s*(\d)\s*(\d)(?!\d)/g, '\\$1{$2}{$3}')
+    .replace(/\\(d?t?frac)\s*(\d)\s*\{/g, '\\$1{$2}{')
+    .replace(/\\(d?t?frac)\s*(\{[^{}]*\})\s*(\d)(?!\d)/g, '\\$1$2{$3}')
+    .replace(/\\sqrt\s*(\d)(?!\d)/g, '\\sqrt{$1}');
+}
+
+/**
+ * Setzt eine Formel in den Text: eine vorhandene (`hit` aus findMathAt) wird ersetzt – mit ihren Begrenzern –,
+ * sonst wird `$…$` hinter der Auswahl eingefügt (mit Leerzeichen, wenn sonst Wörter zusammenklebten).
+ * `large` setzt \displaystyle davor (Brüche in voller Höhe).
+ */
+export function putFormula(text, start, end, latex, { hit = null, large = false } = {}) {
+  const body = large && !latex.startsWith('\\displaystyle') ? `\\displaystyle ${latex}` : latex;
+  if (hit) {
+    const wrapped = `${hit.open}${body}${hit.close}`;
+    const caret = hit.start + wrapped.length;
+    return { text: text.slice(0, hit.start) + wrapped + text.slice(hit.end), start: caret, end: caret };
+  }
+  const before = end > 0 && !/[\s([{„"]/.test(text[end - 1]) ? ' ' : '';
+  const after = end < text.length && /[A-Za-zÄÖÜäöüß0-9]/.test(text[end]) ? ' ' : '';
+  const wrapped = `${before}$${body}$${after}`;
+  const caret = end + wrapped.length - after.length;
+  return { text: text.slice(0, end) + wrapped + text.slice(end), start: caret, end: caret };
+}
+
+/** Ohne visuellen Editor: `$…$` um die Auswahl legen bzw. ein leeres Paar mit Cursor dazwischen einfügen. */
+export function wrapMath(text, start, end) {
+  const selected = text.slice(start, end);
+  return {
+    text: `${text.slice(0, start)}$${selected}$${text.slice(end)}`,
+    start: start + 1,
+    end: start + 1 + selected.length,
+  };
 }
 
 /** Fügt Text an der Auswahl ein (ersetzt sie) und setzt den Cursor dahinter. */

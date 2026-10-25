@@ -19,11 +19,19 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/**
+ * Deutsches Dezimalkomma: „3,5“ soll in der Formel wie ein Komma zwischen Ziffern aussehen und nicht wie
+ * „3, 5“ mit Leerraum (so setzt TeX ein Komma sonst als Satzzeichen). Der gespeicherte Text bleibt unverändert.
+ */
+export function germanDecimal(latex) {
+  return latex.replace(/(\d),(?=\d)/g, '$1{,}');
+}
+
 /** Standard-Formelsatz über KaTeX (falls geladen), sonst der Quelltext. */
 export function defaultRenderMath(latex, display) {
   const katex = globalThis.katex;
   if (!katex) return escapeHtml(display ? `$$${latex}$$` : `$${latex}$`);
-  return katex.renderToString(latex, { throwOnError: false, displayMode: display, output: 'html', strict: 'ignore' });
+  return katex.renderToString(germanDecimal(latex), { throwOnError: false, displayMode: display, output: 'html', strict: 'ignore' });
 }
 
 // Sucht das Ende einer Inline-Formel ab `from`; Rückgabe -1, wenn keines existiert (oder ein Zeilenumbruch dazwischen liegt).
@@ -37,7 +45,10 @@ function findInlineEnd(text, from) {
   return -1;
 }
 
-/** Zerlegt den Text in Text- und Formelstücke: [{ type: 'text', value } | { type: 'math', latex, display }]. */
+/**
+ * Zerlegt den Text in Text- und Formelstücke: [{ type: 'text', value } | { type: 'math', latex, display, open, close, start, end }].
+ * start/end sind die Positionen der ganzen Formel samt Begrenzern im Quelltext (end exklusiv).
+ */
 export function splitMath(text) {
   const parts = [];
   let buf = '';
@@ -54,7 +65,7 @@ export function splitMath(text) {
       const end = text.indexOf('$$', i + 2);
       if (end > i + 2) {
         flush();
-        parts.push({ type: 'math', latex: text.slice(i + 2, end), display: true });
+        parts.push({ type: 'math', latex: text.slice(i + 2, end), display: true, open: '$$', close: '$$', start: i, end: end + 2 });
         i = end + 2;
       } else {
         buf += '$$';
@@ -64,7 +75,7 @@ export function splitMath(text) {
       const end = findInlineEnd(text, i + 1);
       if (end > i + 1) {
         flush();
-        parts.push({ type: 'math', latex: text.slice(i + 1, end), display: false });
+        parts.push({ type: 'math', latex: text.slice(i + 1, end), display: false, open: '$', close: '$', start: i, end: end + 1 });
         i = end + 1;
       } else {
         buf += '$';
@@ -75,7 +86,15 @@ export function splitMath(text) {
       const end = text.indexOf(display ? '\\]' : '\\)', i + 2);
       if (end > i + 2) {
         flush();
-        parts.push({ type: 'math', latex: text.slice(i + 2, end), display });
+        parts.push({
+          type: 'math',
+          latex: text.slice(i + 2, end),
+          display,
+          open: display ? '\\[' : '\\(',
+          close: display ? '\\]' : '\\)',
+          start: i,
+          end: end + 2,
+        });
         i = end + 2;
       } else {
         buf += text[i];
