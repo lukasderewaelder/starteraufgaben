@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="assets/css/fonts.css">
   <link rel="stylesheet" href="assets/css/app.css">
   <link rel="stylesheet" href="assets/css/sheet.css">
+  <link rel="stylesheet" href="assets/css/print.css" media="print">
   <script src="vendor/katex/katex.min.js"></script>
-  <script src="vendor/katex/contrib/auto-render.min.js"></script>
   <script type="module" src="src/main.js"></script>
 </head>
 <body>
@@ -26,68 +26,158 @@
     <span>Eine neue Version ist bereit.</span>
     <button type="button" class="btn btn-small" id="btn-update">Jetzt aktualisieren</button>
   </div>
+  <div id="storage-banner" class="banner banner-warn" role="alert" hidden>
+    Speichern im Browser ist hier nicht möglich (z. B. privates Fenster). Änderungen gehen beim Schließen verloren.
+  </div>
 
-  <main class="app">
-    <div class="panel-col">
-      <section class="card">
-        <h1 class="app-title">Starteraufgaben</h1>
-        <p class="muted">Technik-Test (Meilenstein 0): Prüft PDF-Export, Formel-Eingabe und Offline-Betrieb auf diesem Gerät. Die eigentliche Bedienung folgt.</p>
-      </section>
-
-      <section class="card">
-        <h2>1 · Blatt und PDF</h2>
-        <div class="field">
-          <label for="sel-format">Papierformat</label>
-          <select id="sel-format"></select>
-        </div>
-        <div class="field">
-          <label for="sel-solution">Lösungsfeld (Standard)</label>
-          <select id="sel-solution"></select>
-        </div>
-        <div class="field">
-          <label for="txt-task1">Text der Aufgabe 1 (mit <code>$…$</code> für Formeln)</label>
-          <textarea id="txt-task1" rows="2"></textarea>
-        </div>
-        <div class="field stepper">
-          <span id="lbl-count">Anzahl Aufgaben</span>
-          <div class="stepper-controls" role="group" aria-labelledby="lbl-count">
-            <button type="button" class="btn btn-icon" id="btn-fewer" aria-label="Eine Aufgabe weniger">−</button>
-            <output id="out-count" aria-live="polite">4</output>
-            <button type="button" class="btn btn-icon" id="btn-more" aria-label="Eine Aufgabe mehr">+</button>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary btn-block" id="btn-pdf">PDF erstellen</button>
-        <div id="pdf-result" class="result" aria-live="polite"></div>
-      </section>
-
-      <section class="card">
-        <h2>2 · Formel-Editor (MathLive)</h2>
-        <p class="muted">Lädt erst auf Knopfdruck (ca. 0,8 MB). Eingetippte Formel wird als <code>$…$</code> in Aufgabe 1 übernommen.</p>
-        <button type="button" class="btn btn-block" id="btn-math">Formel-Editor starten</button>
-        <div id="math-area" hidden>
-          <div id="math-host"></div>
-          <p class="muted">LaTeX: <code id="math-latex">–</code></p>
-          <button type="button" class="btn btn-primary btn-block" id="btn-math-insert">In Aufgabe 1 einfügen</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>3 · Offline und Installation</h2>
-        <ul id="diag-list" class="diag"></ul>
-        <div class="btn-row">
-          <button type="button" class="btn" id="btn-diag">Aktualisieren</button>
-          <button type="button" class="btn" id="btn-diag-copy">Diagnose kopieren</button>
-        </div>
-        <p id="diag-copied" class="muted" hidden>In die Zwischenablage kopiert.</p>
-      </section>
+  <header class="topbar">
+    <h1 class="brand">Starteraufgaben</h1>
+    <div class="sheet-switch">
+      <label for="sel-sheet" class="sr-only">Blatt wechseln</label>
+      <select id="sel-sheet"></select>
     </div>
+    <span class="spacer"></span>
+    <span id="save-state" class="save-state" role="status"></span>
+    <button type="button" id="btn-undo" class="btn btn-icon" aria-label="Rückgängig" title="Rückgängig">↶</button>
+    <button type="button" id="btn-redo" class="btn btn-icon" aria-label="Wiederholen" title="Wiederholen">↷</button>
+    <button type="button" id="btn-pdf" class="btn btn-primary">PDF</button>
+    <button type="button" id="btn-menu" class="btn btn-icon" aria-label="Menü" title="Menü" aria-haspopup="dialog">⋯</button>
+  </header>
 
-    <div class="preview-col">
-      <h2>Vorschau</h2>
+  <main class="workspace">
+    <section class="stage" aria-label="Vorschau des Blatts">
       <div id="preview-wrapper">
         <div id="sheet" class="sheet"></div>
+        <div id="sel-box" hidden></div>
       </div>
-    </div>
+      <p id="fit-note" class="fit-note" role="status" hidden></p>
+      <div class="task-bar">
+        <div id="task-chips" class="chips" role="group" aria-label="Aufgabe auswählen"></div>
+        <button type="button" id="btn-add-task" class="btn">+ Aufgabe</button>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Bearbeiten">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-sheet" aria-controls="pane-sheet" aria-selected="true">Blatt</button>
+        <button type="button" role="tab" id="tab-task" aria-controls="pane-task" aria-selected="false">Aufgabe</button>
+      </div>
+
+      <div id="pane-sheet" role="tabpanel" aria-labelledby="tab-sheet" class="pane">
+        <div class="field"><label for="f-title">Titel</label><input id="f-title" type="text" autocomplete="off"></div>
+        <div class="field-row">
+          <div class="field"><label for="f-number">Nummer</label><input id="f-number" type="text" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-zeit">Zeit (z. B. 5 Min.)</label><input id="f-zeit" type="text" autocomplete="off"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-date">Datum</label>
+            <div class="date-row">
+              <input id="f-date" type="date">
+              <button type="button" class="btn btn-icon" id="btn-date-clear" aria-label="Datum entfernen" title="Datum entfernen">×</button>
+            </div>
+          </div>
+          <div class="field"><label for="f-klasse">Klasse / Kurs</label><input id="f-klasse" type="text" autocomplete="off"></div>
+        </div>
+        <div class="field"><label for="f-instructions">Anweisung (optional)</label><textarea id="f-instructions" rows="2" placeholder="Z. B.: Löse die Aufgaben in den ersten 5 Minuten."></textarea></div>
+        <div class="field-row">
+          <div class="field"><label for="f-format">Papierformat</label><select id="f-format"></select></div>
+          <div class="field"><label for="f-solution">Lösungsfeld (Standard)</label><select id="f-solution"></select></div>
+        </div>
+      </div>
+
+      <div id="pane-task" role="tabpanel" aria-labelledby="tab-task" class="pane" hidden>
+        <p id="task-empty" class="muted">Tippe im Blatt auf eine Aufgabe oder wähle unten eine Nummer.</p>
+        <div id="task-form" hidden>
+          <div class="pane-head">
+            <h2 id="task-heading">Aufgabe 1</h2>
+            <div class="btn-row">
+              <button type="button" class="btn btn-icon" id="btn-task-prev" aria-label="Vorherige Aufgabe">‹</button>
+              <button type="button" class="btn btn-icon" id="btn-task-next" aria-label="Nächste Aufgabe">›</button>
+            </div>
+          </div>
+          <div class="toolbar" role="toolbar" aria-label="Formatierung">
+            <button type="button" class="btn tb" data-tool="bold" aria-label="Fett" title="Fett"><b>F</b></button>
+            <button type="button" class="btn tb" data-tool="italic" aria-label="Kursiv" title="Kursiv"><i>K</i></button>
+            <button type="button" class="btn tb" data-tool="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
+            <button type="button" class="btn tb" data-tool="sub" aria-label="Teilaufgaben a) b) c)" title="Teilaufgaben a) b) c)">a)</button>
+            <button type="button" class="btn tb" data-tool="list" aria-label="Aufzählung" title="Aufzählung">•</button>
+            <button type="button" class="btn tb" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen: $…$" hidden>∑</button>
+          </div>
+          <div class="field">
+            <label for="f-text" class="sr-only">Aufgabentext</label>
+            <textarea id="f-text" rows="6" placeholder="Aufgabe eingeben. Formeln mit $…$, z. B. $\frac{3}{4}$"></textarea>
+          </div>
+          <div class="field image-field">
+            <span class="label">Bild</span>
+            <div class="image-row">
+              <img id="img-thumb" alt="" hidden>
+              <label class="btn" for="f-image" id="lbl-image">Bild hinzufügen</label>
+              <input id="f-image" type="file" accept="image/*" class="sr-only">
+              <button type="button" class="btn" id="btn-image-remove" hidden>Bild entfernen</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="f-task-solution">Lösungsfeld</label><select id="f-task-solution"></select></div>
+            <div class="field"><label for="f-weight">Zeilenhöhe</label><select id="f-weight"></select></div>
+          </div>
+          <div class="btn-row task-actions">
+            <button type="button" class="btn" id="btn-task-up">▲ Nach oben</button>
+            <button type="button" class="btn" id="btn-task-down">▼ Nach unten</button>
+            <button type="button" class="btn" id="btn-task-dup">Duplizieren</button>
+            <button type="button" class="btn btn-danger" id="btn-task-del">Löschen</button>
+          </div>
+        </div>
+      </div>
+    </aside>
   </main>
+
+  <div id="toast" class="toast" role="status" hidden>
+    <span id="toast-text"></span>
+    <button type="button" class="btn btn-small" id="toast-action" hidden></button>
+  </div>
+
+  <dialog id="dlg-pdf" aria-labelledby="dlg-pdf-title">
+    <h2 id="dlg-pdf-title">PDF</h2>
+    <p id="pdf-status" role="status">Erstelle PDF …</p>
+    <div id="pdf-actions" class="btn-row"></div>
+    <details class="more">
+      <summary>Weitere Möglichkeiten</summary>
+      <p class="muted">„Drucken“ erzeugt am PC ein Vektor-PDF mit auswählbarem Text (Drucker „Als PDF speichern“). Am iPad ist das PDF oben die bessere Wahl.</p>
+      <button type="button" class="btn" id="btn-print">Drucken …</button>
+    </details>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-menu" aria-labelledby="dlg-menu-title">
+    <h2 id="dlg-menu-title">Menü</h2>
+    <div class="menu-list">
+      <button type="button" class="btn" id="m-new">Neues Blatt</button>
+      <button type="button" class="btn" id="m-dup">Blatt duplizieren</button>
+      <button type="button" class="btn btn-danger" id="m-del">Blatt löschen</button>
+      <button type="button" class="btn" id="m-settings">Voreinstellungen</button>
+      <button type="button" class="btn" id="m-diag">Diagnose</button>
+    </div>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-settings" aria-labelledby="dlg-settings-title">
+    <h2 id="dlg-settings-title">Voreinstellungen für neue Blätter</h2>
+    <div class="field"><label for="s-format">Papierformat</label><select id="s-format"></select></div>
+    <div class="field"><label for="s-solution">Lösungsfeld</label><select id="s-solution"></select></div>
+    <p class="muted">Gilt für neu angelegte Blätter. Einzelne Aufgaben können davon abweichen.</p>
+    <div class="dialog-foot"><button type="button" class="btn btn-primary" data-close>Fertig</button></div>
+  </dialog>
+
+  <dialog id="dlg-diag" aria-labelledby="dlg-diag-title">
+    <h2 id="dlg-diag-title">Diagnose</h2>
+    <ul id="diag-list" class="diag"></ul>
+    <div class="btn-row">
+      <button type="button" class="btn" id="btn-diag">Aktualisieren</button>
+      <button type="button" class="btn" id="btn-diag-copy">Diagnose kopieren</button>
+    </div>
+    <p id="diag-copied" class="muted" hidden>In die Zwischenablage kopiert.</p>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
 </body>
 </html>

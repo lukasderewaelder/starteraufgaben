@@ -32,7 +32,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: calc(20px * var(--u));
-  margin-bottom: calc(30px * var(--u));
+  margin-bottom: calc(30px * var(--u) * var(--fit, 1));
 }
 .sheet-head-left {
   display: flex;
@@ -89,6 +89,7 @@
 .sheet-grid {
   flex: 1 1 0;
   min-height: 0;
+  overflow: hidden; /* zu viel Inhalt wird abgeschnitten, nicht über den Rahmen gedruckt (fit.js warnt) */
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--line);
@@ -102,20 +103,42 @@
   background-color: #fff;
 }
 .cell-head {
-  padding: calc(25px * var(--u));
+  overflow: visible; /* die Kopfzeile darf nie beschnitten werden: ihre Höhe richtet sich nach dem Text */
+  min-height: auto;
+  padding: calc(25px * var(--u) * var(--fit, 1)) calc(25px * var(--u));
   font-size: calc(38px * var(--u));
   font-weight: 700;
 }
+/* --fit (0.7 … 1) setzt die Auto-Anpassung der Schrift; wird in fit.js gesetzt. */
 .cell-task {
   display: flex;
   gap: calc(15px * var(--u));
-  padding: calc(25px * var(--u));
-  font-size: calc(32px * var(--u));
+  padding: calc(25px * var(--u) * var(--fit, 1));
+  font-size: calc(32px * var(--u) * var(--fit, 1));
   line-height: 1.35;
 }
 .task-nr { font-weight: 700; white-space: nowrap; }
 .task-body { flex: 1; min-width: 0; }
 .sheet .katex { font-size: 1.15em; }
+.sheet .katex-display { margin: 0.4em 0; }
+.sheet strong { font-weight: 700; }
+
+/* Zeilen im Aufgabentext (siehe markup.js) */
+.ln { margin: 0; overflow-wrap: anywhere; }
+.ln.sub, .ln.li { display: flex; gap: 0.4em; }
+.ln .lbl { flex: none; min-width: 1.3em; font-weight: 700; }
+.ln .txt { flex: 1; min-width: 0; }
+
+.task-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(200px * var(--u) * var(--fit, 1));
+  margin-top: calc(15px * var(--u));
+  object-fit: contain;
+}
+
+/* Warnmarke nur in der Vorschau – der PDF-Export entfernt die Klasse */
+.cell-task.is-overflow { outline: calc(6px * var(--u)) solid #f59e0b; outline-offset: calc(-6px * var(--u)); }
 
 /* Lösungsfeld: Muster liegt als Inline-SVG (siehe sheet.js) links oben im Feld und wird abgeschnitten. */
 .cell-sol { position: relative; }

@@ -2,11 +2,12 @@
 // Der Block zwischen den Marken wird von tools/precache.mjs erzeugt (node tools/precache.mjs).
 
 // >>> precache
-const VERSION = 'b395355400';
+const VERSION = '95d0dec89b';
 const ASSETS = [
   './',
   './assets/css/app.css',
   './assets/css/fonts.css',
+  './assets/css/print.css',
   './assets/css/sheet.css',
   './assets/fonts/comic-neue-latin-400-italic.woff2',
   './assets/fonts/comic-neue-latin-400-normal.woff2',
@@ -20,10 +21,18 @@ const ASSETS = [
   './index.html',
   './manifest.webmanifest',
   './src/diagnose.js',
+  './src/editor.js',
   './src/export-pdf.js',
+  './src/fit.js',
   './src/formats.js',
+  './src/history.js',
+  './src/images.js',
   './src/main.js',
+  './src/markup.js',
+  './src/model.js',
   './src/sheet.js',
+  './src/store.js',
+  './src/text-tools.js',
   './vendor/html2canvas/html2canvas.min.js',
   './vendor/jspdf/jspdf.umd.min.js',
   './vendor/katex/contrib/auto-render.min.js',

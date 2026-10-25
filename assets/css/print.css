@@ -1,0 +1,20 @@
+/* Drucken / Vektor-PDF (Desktop): nur das Blatt, in Originalgröße. Die Seitengröße setzt export-pdf.js per @page. */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  background: #fff !important;
+}
+.topbar, .banner, .panel, .task-bar, .fit-note, dialog, #toast, #sel-box { display: none !important; }
+.workspace { display: block !important; height: 0 !important; padding: 0 !important; overflow: hidden !important; }
+#sheet {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  transform: none !important;
+}
+#sheet, #sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cell-task.is-overflow { outline: none !important; }

@@ -1,5 +1,8 @@
 // Arbeitsblatt: baut das DOM des Blatts aus einem Blatt-Modell und passt die Vorschau an.
+import { autoFit } from './fit.js';
 import { pageSize } from './formats.js';
+import { markupToHtml } from './markup.js';
+import { effectiveSolutionStyle } from './model.js';
 
 export const SOLUTION_STYLES = {
   leer: 'Leer',
@@ -8,36 +11,17 @@ export const SOLUTION_STYLES = {
   punkte: 'Punkteraster',
 };
 
-const MATH_DELIMITERS = [
-  { left: '$$', right: '$$', display: true },
-  { left: '$', right: '$', display: false },
-  { left: '\\(', right: '\\)', display: false },
-  { left: '\\[', right: '\\]', display: true },
-];
-
-export function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function textToHtml(text) {
-  return escapeHtml(text).replace(/\n/g, '<br>');
-}
-
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('de-DE');
 }
 
-function el(tag, className, content) {
+function el(tag, className, content, field) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (content !== undefined) node.textContent = content;
+  if (field) node.dataset.field = field;
   return node;
 }
 
@@ -87,8 +71,56 @@ function patternSvg(style, size) {
   return svg;
 }
 
-/** Füllt `host` (das Element mit der Klasse `sheet`) mit dem Blatt. */
-export function renderSheet(host, sheet) {
+function buildTaskCell(task, index, ctx) {
+  const cell = el('div', 'cell cell-task');
+  cell.dataset.index = String(index);
+  const body = el('div', 'task-body');
+  const text = el('div', 'task-text');
+  text.innerHTML = markupToHtml(task.text);
+  body.append(text);
+  const url = task.imageId ? ctx.imageUrl?.(task.imageId) : undefined;
+  if (url) {
+    const img = el('img', 'task-image');
+    img.alt = '';
+    img.src = url;
+    body.append(img);
+  }
+  cell.append(el('span', 'task-nr', `${index + 1}.`), body);
+  return cell;
+}
+
+/**
+ * Füllt `host` (das Element mit der Klasse `sheet`) mit dem Blatt und passt die Schrift an.
+ * `ctx.imageUrl(id)` liefert die (bereits geladene) Blob-URL eines Bildes.
+ * Gibt { size, fit } zurück; fit = Ergebnis von autoFit().
+ */
+function buildHead(sheet) {
+  const head = el('div', 'sheet-head');
+  const left = el('div', 'sheet-head-left');
+  left.append(el('h1', 'sheet-title', sheet.title, 'title'));
+  if (sheet.instructions?.trim()) {
+    const instr = el('div', 'sheet-instr', undefined, 'instructions');
+    instr.innerHTML = markupToHtml(sheet.instructions);
+    left.append(instr);
+  }
+
+  const right = el('div', 'sheet-head-right');
+  const meta = [
+    sheet.klasse && el('span', '', `Klasse ${sheet.klasse}`, 'klasse'),
+    sheet.date && el('span', '', formatDate(sheet.date), 'date'),
+  ].filter(Boolean);
+  if (meta.length) {
+    const metaEl = el('div', 'sheet-meta');
+    metaEl.append(...meta);
+    right.append(metaEl);
+  }
+  if (sheet.zeit?.trim()) right.append(el('div', 'sheet-zeit', sheet.zeit, 'zeit'));
+  right.append(el('div', 'sheet-num', sheet.number, 'number'));
+  head.append(left, right);
+  return head;
+}
+
+export function renderSheet(host, sheet, ctx = {}) {
   const size = pageSize(sheet.format);
   host.style.width = `${size.w}px`;
   host.style.height = `${size.h}px`;
@@ -96,53 +128,40 @@ export function renderSheet(host, sheet) {
   host.replaceChildren();
 
   const frame = el('div', 'sheet-frame');
-
-  const head = el('div', 'sheet-head');
-  const left = el('div', 'sheet-head-left');
-  left.append(el('h1', 'sheet-title', sheet.title));
-  if (sheet.instructions?.trim()) {
-    const instr = el('div', 'sheet-instr');
-    instr.innerHTML = textToHtml(sheet.instructions);
-    left.append(instr);
-  }
-  const right = el('div', 'sheet-head-right');
-  const meta = [sheet.klasse && `Klasse ${sheet.klasse}`, formatDate(sheet.date)].filter(Boolean);
-  if (meta.length) {
-    const metaEl = el('div', 'sheet-meta');
-    meta.forEach((m) => metaEl.append(el('span', '', m)));
-    right.append(metaEl);
-  }
-  if (sheet.zeit?.trim()) right.append(el('div', 'sheet-zeit', sheet.zeit));
-  right.append(el('div', 'sheet-num', sheet.number));
-  head.append(left, right);
+  const head = buildHead(sheet);
 
   const grid = el('div', 'sheet-grid');
-  const rows = sheet.tasks.map((t) => `minmax(0, ${t.weight || 1}fr)`);
-  grid.style.gridTemplateRows = ['auto', ...rows].join(' ');
+  // Jede Zeile bekommt ihren Anteil (Zeilenhöhe 1×/1,5×/2×), wächst aber bei viel Inhalt mit – wie eine Tabellenzeile.
+  grid.style.gridTemplateRows = ['auto', ...sheet.tasks.map((t) => `minmax(min-content, ${t.weight || 1}fr)`)].join(' ');
   grid.append(el('div', 'cell cell-head', 'Aufgaben'), el('div', 'cell cell-head', 'Lösungen'));
-
   sheet.tasks.forEach((task, index) => {
-    const cell = el('div', 'cell cell-task');
-    cell.dataset.index = String(index);
-    const body = el('div', 'task-body');
-    body.innerHTML = textToHtml(task.text);
-    cell.append(el('span', 'task-nr', `${index + 1}.`), body);
-    const style = task.solutionStyle || sheet.solutionDefault || 'leer';
+    const style = effectiveSolutionStyle(sheet, task);
     const solution = el('div', `cell cell-sol sol-${style}`);
+    solution.dataset.index = String(index);
     if (style !== 'leer') solution.append(patternSvg(style, size));
-    grid.append(cell, solution);
+    grid.append(buildTaskCell(task, index, ctx), solution);
   });
 
   frame.append(head, grid);
   host.append(frame);
-
-  if (window.renderMathInElement) {
-    window.renderMathInElement(host, { delimiters: MATH_DELIMITERS, throwOnError: false });
-  }
-  return size;
+  return { size, fit: autoFit(host) };
 }
 
-/** Skaliert das Blatt per transform in den Vorschau-Rahmen. */
+/** Baut nur die Kopfzeile neu (beim Tippen in Titel, Nummer …) und passt neu an. */
+export function patchHeader(host, sheet) {
+  host.querySelector('.sheet-head')?.replaceWith(buildHead(sheet));
+  return autoFit(host);
+}
+
+/** Aktualisiert nur den Text einer Aufgabe (beim Tippen; Bilder bleiben unberührt) und passt neu an. */
+export function patchTaskText(host, sheet, index) {
+  const target = host.querySelector(`.cell-task[data-index="${index}"] .task-text`);
+  if (!target) return null;
+  target.innerHTML = markupToHtml(sheet.tasks[index].text);
+  return autoFit(host);
+}
+
+/** Skaliert das Blatt per transform in den Vorschau-Rahmen. Gibt den Skalierungsfaktor zurück. */
 export function fitPreview(wrapper, host, size, pad = 16) {
   const avail = Math.max(wrapper.clientWidth - pad * 2, 100);
   const scale = Math.min(avail / size.w, 1);

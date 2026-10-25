@@ -84,6 +84,7 @@ async function renderCanvas(sheetEl, size, scales) {
           clone.style.top = '0px';
           clone.style.transform = 'none';
           clone.style.margin = '0';
+          clone.querySelectorAll('.is-overflow').forEach((c) => c.classList.remove('is-overflow')); // Warnmarken gehören nicht aufs Papier
         },
       });
       if (!canvas.width || !canvas.height) throw new PdfExportError('Leeres Bild (Größe 0)');
@@ -170,4 +171,21 @@ export function openPdf(blob) {
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+}
+
+/** Setzt die Papiergröße für den Druckdialog (Chrome/Edge am PC; Safari am iPad ignoriert sie teilweise). */
+export function applyPrintPageSize(formatId) {
+  const size = pageSize(formatId);
+  let style = document.getElementById('print-page-style');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'print-page-style';
+    document.head.append(style);
+  }
+  style.textContent = `@page { size: ${size.mmW}mm ${size.mmH}mm; margin: 0; }`;
+}
+
+export function printSheet(formatId) {
+  applyPrintPageSize(formatId);
+  window.print();
 }
