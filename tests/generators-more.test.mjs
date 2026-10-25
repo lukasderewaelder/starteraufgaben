@@ -219,3 +219,135 @@ test('Quadratische Gleichungen: beide Lösungen erfüllen sie, die Lösungen sin
   }
   assert.deepEqual([...kinds].sort(), ['factored', 'general', 'pure']);
 });
+
+// --- Potenzen und Wurzeln ---------------------------------------------------------------------------------
+const parseDE = (s) => Number(String(s).replace(/\\,/g, '').replace(',', '.'));
+
+test('Quadratzahlen und Wurzeln: Quadrat, Kubik und Wurzeln stimmen, auch mit Dezimalstellen', () => {
+  const kinds = new Set();
+  for (const decimal of [false, true]) {
+    for (const kind of ['square', 'sqrt', 'cube', 'cbrt', 'mixed']) {
+      const { items } = roll('squares-roots', { kind, decimal, baseMax: 20 }, 100);
+      for (const it of items) {
+        const { base, power, d } = it.data;
+        kinds.add(it.data.kind);
+        const cubic = it.data.kind === 'cube' || it.data.kind === 'cbrt';
+        assert.equal(power, base ** (cubic ? 3 : 2));
+        if (decimal) assert.ok(base >= 1 && base <= 9);
+        else assert.ok(base >= 2 && base <= (cubic ? 12 : 20), `Basis ${base}`);
+        // Die gezeigten Zahlen rechnen sich aus Basis und Stellen zurück
+        const shownBase = base / 10 ** d;
+        const shownPower = power / 10 ** (d * (cubic ? 3 : 2));
+        const nums = [...it.solution.matchAll(/-?[\d\\,]+(?:,\d+)?/g)].map((m) => parseDE(m[0])).filter((n) => !Number.isNaN(n));
+        assert.ok(nums.some((n) => Math.abs(n - shownBase) < 1e-9), it.solution);
+        assert.ok(nums.some((n) => Math.abs(n - shownPower) < 1e-9), it.solution);
+        if (it.data.kind === 'sqrt') assert.match(it.text, /^\$\\sqrt\{/);
+        if (it.data.kind === 'cbrt') assert.match(it.text, /^\$\\sqrt\[3\]\{/);
+      }
+    }
+  }
+  assert.deepEqual([...kinds].sort(), ['cbrt', 'cube', 'sqrt', 'square']);
+});
+
+test('Potenzen berechnen: Wert stimmt, negative Basis steht in Klammern, Exponent 0 und 1 nur auf Wunsch', () => {
+  for (const negative of [false, true]) {
+    for (const zeroOne of [false, true]) {
+      const { items } = roll('power-eval', { negative, zeroOne, baseMax: 9, expMax: 6 }, 200);
+      let sawNegative = false;
+      let sawSmall = false;
+      for (const it of items) {
+        const { base, exp, value } = it.data;
+        assert.equal(value, base ** exp);
+        assert.ok(Math.abs(value) <= 100_000);
+        assert.ok(exp >= (zeroOne ? 0 : 2) && exp <= 6);
+        if (base < 0) {
+          sawNegative = true;
+          assert.ok(it.text.startsWith(`$(${base})^`), it.text);
+        }
+        if (exp < 2) sawSmall = true;
+        assert.equal(parseDE(it.solution.split('= ').pop().replace('$', '')), value);
+      }
+      assert.equal(sawNegative, negative);
+      assert.equal(sawSmall, zeroOne);
+    }
+  }
+});
+
+test('Zehnerpotenzen: ausschreiben, als Potenz schreiben, Standardschreibweise – auch mit negativen Exponenten', () => {
+  const kinds = new Set();
+  for (const negative of [false, true]) {
+    const { items } = roll('power-ten', { kind: 'mixed', negative, expMax: 7 }, 200);
+    let sawNegative = false;
+    for (const it of items) {
+      kinds.add(it.data.kind);
+      const { e, number } = it.data;
+      if (it.data.kind === 'sci') {
+        const { mant } = it.data;
+        assert.ok(mant >= 11 && mant <= 99 && mant % 10 !== 0);
+        const expected = (mant / 10) * 10 ** e;
+        assert.ok(Math.abs(parseDE(number) - expected) < expected * 1e-9, `${number} = ${mant / 10}·10^${e}`);
+        assert.ok(e !== 0);
+        assert.ok(it.solution.includes(`10^{${e}}`));
+      } else {
+        assert.ok(Math.abs(parseDE(number) - 10 ** e) < 10 ** e * 1e-9);
+        assert.ok(Math.abs(e) >= 2 && Math.abs(e) <= 7);
+      }
+      if (e < 0) {
+        sawNegative = true;
+        assert.match(number, /^0,0*[1-9]\d*$/);
+      }
+    }
+    assert.equal(sawNegative, negative);
+  }
+  assert.deepEqual([...kinds].sort(), ['expand', 'sci', 'write']);
+});
+
+test('Potenzgesetze: Exponenten und Zahlfaktoren des Ergebnisses stimmen', () => {
+  for (const base of ['variable', 'number']) {
+    for (const withCoef of [false, true]) {
+      for (const kind of ['mul', 'div', 'pow', 'mixed']) {
+        const { items } = roll('power-laws', { base, coef: withCoef, kind, expMax: 8, variable: 'a' }, 100);
+        for (const it of items) {
+          const d = it.data;
+          const exponents = { mul: d.m + d.n, div: d.m - d.n, pow: d.m * d.n }[d.kind];
+          assert.equal(d.exp, exponents);
+          assert.ok(d.exp >= 2, 'Ergebnis soll eine echte Potenz bleiben');
+          assert.ok(d.m <= 8 && d.n <= 8);
+          const coefficient = { mul: d.c1 * d.c2, div: d.c1 / d.c2, pow: d.c1 ** d.n }[d.kind];
+          assert.equal(d.c, coefficient);
+          assert.ok(Number.isInteger(d.c));
+          const sym = base === 'variable' ? 'a' : '\\d';
+          assert.match(it.solution, new RegExp(`= ${d.c === 1 || base === 'number' ? '' : d.c}${sym}\\^\\{${d.exp}\\}\\$$`), it.solution);
+          if (!withCoef || base === 'number') assert.ok(d.c === 1);
+        }
+        for (const field of growth(items)) assertCleanTerms(field);
+      }
+    }
+  }
+});
+
+test('Wurzeln umformen: teilweise radizieren, multiplizieren, zusammenfassen', () => {
+  const squareFree = (n) => ![4, 9, 16, 25, 36, 49].some((k) => n % k === 0);
+  const kinds = new Set();
+  for (const kind of ['partial', 'multiply', 'add', 'mixed']) {
+    const { items } = roll('root-simplify', { kind, maxFactor: 8 }, 150);
+    for (const it of items) {
+      const d = it.data;
+      kinds.add(d.kind);
+      if (d.kind === 'partial') {
+        assert.equal(d.a * d.a * d.b, d.N);
+        assert.ok(squareFree(d.b) && d.b > 1 && d.a >= 2 && d.a <= 8);
+        assert.ok(Math.abs(Math.sqrt(d.N) - d.a * Math.sqrt(d.b)) < 1e-9);
+      } else if (d.kind === 'multiply') {
+        assert.ok(Number.isInteger(d.r));
+        assert.ok(Math.abs(Math.sqrt(d.x) * Math.sqrt(d.y) - d.r) < 1e-9);
+      } else {
+        assert.notEqual(d.r, 0);
+        assert.equal(d.c1 + d.c2, d.r);
+        assert.ok(d.c1 >= 1 && Math.abs(d.c2) <= 8);
+      }
+    }
+    for (const field of growth(items)) assertCleanTerms(field);
+  }
+  assert.deepEqual([...kinds].sort(), ['add', 'multiply', 'partial']);
+});

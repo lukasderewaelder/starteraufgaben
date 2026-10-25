@@ -4,6 +4,7 @@
 import { decimalsParam, fmt, intParam, item, pow10, rangeParams } from './helpers.js';
 import { frac, fractionResult, math, mixed, randScaled } from './numfmt.js';
 import { gcd, lcm } from './rng.js';
+import { POWER_GENERATORS } from './defs-powers.js';
 import { TERM_GENERATORS } from './defs-terms.js';
 
 // --- Rechnen: + − · : -------------------------------------------------------------------------
@@ -617,4 +618,5 @@ export const GENERATOR_LIST = [
   compare,
   units,
   ...TERM_GENERATORS,
+  ...POWER_GENERATORS,
 ];
