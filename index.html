@@ -35,6 +35,7 @@
     <header class="libbar">
       <h1 class="brand">Starteraufgaben</h1>
       <span class="spacer"></span>
+      <button type="button" id="lib-bank" class="btn">Aufgabenbank</button>
       <button type="button" id="lib-backup" class="btn">Sicherung</button>
       <button type="button" id="lib-menu" class="btn btn-icon" aria-label="Menü" title="Menü" aria-haspopup="dialog">⋯</button>
       <button type="button" id="lib-new" class="btn btn-primary">+ Neues Blatt</button>
@@ -62,6 +63,72 @@
     </main>
   </div>
 
+  <!-- Aufgabenbank: gesammelte Aufgaben mit Klassenstufe, Thema und Schlagwörtern -->
+  <div id="view-bank">
+    <header class="libbar">
+      <button type="button" id="bank-back" class="btn">‹ Bibliothek</button>
+      <h1 class="brand">Aufgabenbank</h1>
+      <span class="spacer"></span>
+      <span id="bank-save-state" class="save-state" role="status"></span>
+      <button type="button" id="bank-new" class="btn btn-primary">+ Neue Aufgabe</button>
+    </header>
+    <main class="bank">
+      <section class="bank-list-col" aria-label="Aufgaben">
+        <div class="bank-filters">
+          <label for="bank-search" class="sr-only">Aufgaben durchsuchen</label>
+          <input id="bank-search" type="search" placeholder="Aufgaben durchsuchen …" autocomplete="off">
+          <div class="field-row">
+            <div><label for="bank-grade" class="sr-only">Klassenstufe</label><select id="bank-grade"></select></div>
+            <div><label for="bank-topic" class="sr-only">Thema</label><select id="bank-topic"></select></div>
+          </div>
+          <div id="bank-tags" class="tagbar" role="group" aria-label="Schlagwörter"></div>
+        </div>
+        <p id="bank-empty" class="muted" hidden></p>
+        <div id="bank-grid" class="bank-grid"></div>
+      </section>
+      <aside id="bank-editor" class="panel" aria-label="Aufgabe bearbeiten" hidden>
+        <div class="pane">
+          <div class="pane-head">
+            <h2>Aufgabe bearbeiten</h2>
+            <button type="button" id="bank-close" class="btn btn-small">Fertig</button>
+          </div>
+          <div class="toolbar" role="toolbar" aria-label="Formatierung">
+            <button type="button" class="btn tb" data-tool="bold" aria-label="Fett" title="Fett"><b>F</b></button>
+            <button type="button" class="btn tb" data-tool="italic" aria-label="Kursiv" title="Kursiv"><i>K</i></button>
+            <button type="button" class="btn tb" data-tool="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
+            <button type="button" class="btn tb" data-tool="sub" aria-label="Teilaufgaben a) b) c)" title="Teilaufgaben a) b) c)">a)</button>
+            <button type="button" class="btn tb" data-tool="list" aria-label="Aufzählung" title="Aufzählung">•</button>
+            <button type="button" class="btn tb tb-math" data-tool="math" aria-label="Formel einfügen" title="Formel einfügen oder ändern">∑ Formel</button>
+          </div>
+          <div class="field">
+            <label for="bank-text" class="sr-only">Aufgabentext</label>
+            <textarea id="bank-text" rows="5" placeholder="Aufgabe eingeben …"></textarea>
+          </div>
+          <div class="task-preview" id="bank-preview" aria-label="Vorschau"></div>
+          <div class="field-row">
+            <div class="field"><label for="bank-f-grade">Klassenstufe</label><select id="bank-f-grade"></select></div>
+            <div class="field"><label for="bank-f-topic">Thema</label><input id="bank-f-topic" type="text" list="topic-list" autocomplete="off"></div>
+          </div>
+          <div class="field"><label for="bank-f-tags">Schlagwörter (mit Komma trennen)</label><input id="bank-f-tags" type="text" autocomplete="off"></div>
+          <div class="field image-field">
+            <span class="label">Bild</span>
+            <div class="image-row">
+              <img id="bank-thumb" alt="" hidden>
+              <label class="btn" for="bank-f-image" id="bank-lbl-image">Bild hinzufügen</label>
+              <input id="bank-f-image" type="file" accept="image/*" class="sr-only">
+              <button type="button" class="btn" id="bank-image-remove" hidden>Bild entfernen</button>
+            </div>
+          </div>
+          <div class="btn-row task-actions">
+            <button type="button" class="btn" id="bank-dup">Duplizieren</button>
+            <button type="button" class="btn btn-danger" id="bank-del">Löschen</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <datalist id="topic-list"></datalist>
+
   <header class="topbar">
     <button type="button" id="btn-library" class="btn">‹ Bibliothek</button>
     <span id="topbar-title" class="topbar-title"></span>
@@ -82,7 +149,10 @@
       <p id="fit-note" class="fit-note" role="status" hidden></p>
       <div class="task-bar">
         <div id="task-chips" class="chips" role="group" aria-label="Aufgabe auswählen"></div>
-        <button type="button" id="btn-add-task" class="btn">+ Aufgabe</button>
+        <div class="btn-row">
+          <button type="button" id="btn-bank-pick" class="btn">Aus Bank …</button>
+          <button type="button" id="btn-add-task" class="btn">+ Aufgabe</button>
+        </div>
       </div>
     </section>
 
@@ -154,6 +224,7 @@
             <button type="button" class="btn" id="btn-task-up">▲ Nach oben</button>
             <button type="button" class="btn" id="btn-task-down">▼ Nach unten</button>
             <button type="button" class="btn" id="btn-task-dup">Duplizieren</button>
+            <button type="button" class="btn" id="btn-task-bank">In Bank speichern</button>
             <button type="button" class="btn btn-danger" id="btn-task-del">Löschen</button>
           </div>
         </div>
@@ -211,10 +282,44 @@
     <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
   </dialog>
 
+  <dialog id="dlg-pick" aria-labelledby="pick-title" class="wide">
+    <h2 id="pick-title">Aus der Aufgabenbank</h2>
+    <div class="bank-filters">
+      <label for="pick-search" class="sr-only">Aufgaben durchsuchen</label>
+      <input id="pick-search" type="search" placeholder="Aufgaben durchsuchen …" autocomplete="off">
+      <div class="field-row">
+        <div><label for="pick-grade" class="sr-only">Klassenstufe</label><select id="pick-grade"></select></div>
+        <div><label for="pick-topic" class="sr-only">Thema</label><select id="pick-topic"></select></div>
+      </div>
+      <div id="pick-tags" class="tagbar" role="group" aria-label="Schlagwörter"></div>
+    </div>
+    <p id="pick-empty" class="muted" hidden></p>
+    <div id="pick-list" class="bank-grid pick-list"></div>
+    <p id="pick-note" class="muted" role="status"></p>
+    <div class="dialog-foot">
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="button" class="btn btn-primary" id="pick-ok" disabled>Hinzufügen</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-tobank" aria-labelledby="tobank-title">
+    <h2 id="tobank-title">In die Aufgabenbank</h2>
+    <div class="task-preview" id="tobank-preview" aria-label="Vorschau"></div>
+    <div class="field-row">
+      <div class="field"><label for="tb-grade">Klassenstufe</label><select id="tb-grade"></select></div>
+      <div class="field"><label for="tb-topic">Thema</label><input id="tb-topic" type="text" list="topic-list" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="tb-tags">Schlagwörter (mit Komma trennen)</label><input id="tb-tags" type="text" autocomplete="off"></div>
+    <div class="dialog-foot">
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="button" class="btn btn-primary" id="tb-ok">Speichern</button>
+    </div>
+  </dialog>
+
   <dialog id="dlg-backup" aria-labelledby="backup-title">
     <h2 id="backup-title">Sicherung</h2>
     <div id="backup-home">
-      <p class="muted">Eine Sicherung ist eine Datei mit allen Blättern und Bildern. Lege sie z. B. in OneDrive ab – so kommst du auch von PC zu iPad an deine Blätter.</p>
+      <p class="muted">Eine Sicherung ist eine Datei mit allen Blättern, der Aufgabenbank und den Bildern. Lege sie z. B. in OneDrive ab – so kommst du auch von PC zu iPad an deine Blätter und Aufgaben.</p>
       <div class="menu-list">
         <button type="button" class="btn btn-primary" id="backup-make">Sicherung erstellen</button>
         <label class="btn" for="backup-file">Sicherung einspielen …</label>

@@ -1,6 +1,7 @@
 // Dialog „Sicherung“: Datei erstellen (alle Blätter oder eines) und Sicherungsdatei einspielen.
 import {
   afterBackup,
+  asBankCopies,
   asCopies,
   backupFilename,
   base64ToBlob,
@@ -8,6 +9,7 @@ import {
   parseBackup,
   planImport,
 } from './backup.js';
+import { imageIdsOfBank } from './bank.js';
 import { rememberImage } from './images.js';
 import { imageIdsOf } from './model.js';
 import { $, fileDeliverable, mb, toast } from './ui.js';
@@ -71,13 +73,16 @@ export function createBackupUi(app) {
     actions.replaceChildren();
     try {
       await app.refreshSheets();
+      await app.refreshBank();
       const sheets = scope.sheets ? scope.sheets.map((s) => app.sheets.find((x) => x.id === s.id) ?? s) : app.sheets;
-      if (!sheets.length) {
-        showResult('Es gibt noch keine Blätter zum Sichern.', { error: true });
+      const bank = scope.sheets ? [] : app.bank; // die Sicherung eines einzelnen Blatts enthält keine Bank
+      if (!sheets.length && !bank.length) {
+        showResult('Es gibt noch nichts zum Sichern.', { error: true });
         return;
       }
-      const images = (await Promise.all([...new Set(sheets.flatMap(imageIdsOf))].map((id) => app.store.getImage(id)))).filter(Boolean);
-      const backup = await buildBackup({ sheets, images });
+      const imageIds = new Set([...sheets.flatMap(imageIdsOf), ...imageIdsOfBank(bank)]);
+      const images = (await Promise.all([...imageIds].map((id) => app.store.getImage(id)))).filter(Boolean);
+      const backup = await buildBackup({ sheets, bank, images });
       const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
       const name = backupFilename(scope.sheets ? { scope: 'sheet', sheet: sheets[0] } : { scope: 'all' });
       const delivery = fileDeliverable(blob, name);
@@ -114,8 +119,9 @@ export function createBackupUi(app) {
           !delivery.canShare,
         ),
       );
+      const bankNote = bank.length ? `, ${bank.length} Aufgabe${bank.length === 1 ? '' : 'n'} der Bank` : '';
       const imageNote = images.length ? `, ${images.length} Bild${images.length === 1 ? '' : 'er'}` : '';
-      showResult(`${name} – ${sheets.length} Blatt/Blätter${imageNote}, ${mb(blob.size)}`, { buttons });
+      showResult(`${name} – ${sheets.length} Blatt/Blätter${bankNote}${imageNote}, ${mb(blob.size)}`, { buttons });
     } catch (err) {
       console.error(err);
       showResult(`Die Sicherung konnte nicht erstellt werden: ${err.message}`, { error: true });
@@ -138,20 +144,28 @@ export function createBackupUi(app) {
       return;
     }
     await app.refreshSheets();
+    await app.refreshBank();
     const plan = planImport(app.sheets, parsed.sheets);
+    const bankPlan = planImport(app.bank, parsed.bank);
     const lines = [];
     if (plan.add.length) lines.push(`${plan.add.length} neue(s) Blatt/Blätter`);
     if (plan.update.length) lines.push(`${plan.update.length} Blatt/Blätter, die in der Datei neuer sind (werden aktualisiert)`);
-    if (plan.same) lines.push(`${plan.same} unverändert`);
+    if (plan.same) lines.push(`${plan.same} Blatt/Blätter unverändert`);
     if (plan.localNewer.length) lines.push(`${plan.localNewer.length} Blatt/Blätter, die hier neuer sind (bleiben unverändert)`);
-    const changes = plan.add.length + plan.update.length;
+    if (bankPlan.add.length) lines.push(`${bankPlan.add.length} neue Aufgabe(n) der Aufgabenbank`);
+    if (bankPlan.update.length) lines.push(`${bankPlan.update.length} Aufgabe(n) der Bank, die in der Datei neuer sind (werden aktualisiert)`);
+    if (bankPlan.same) lines.push(`${bankPlan.same} Bank-Aufgabe(n) unverändert`);
+    if (bankPlan.localNewer.length) lines.push(`${bankPlan.localNewer.length} Bank-Aufgabe(n), die hier neuer sind (bleiben unverändert)`);
+    const changes = plan.add.length + plan.update.length + bankPlan.add.length + bankPlan.update.length;
+    const newerHere = plan.localNewer.length + bankPlan.localNewer.length;
 
     const apply = async (withCopies) => {
       showResult('Spiele ein …');
       actions.replaceChildren();
       try {
         const wanted = [...plan.add, ...plan.update, ...(withCopies ? asCopies(plan.localNewer) : [])];
-        const needed = new Set(wanted.flatMap(imageIdsOf));
+        const wantedBank = [...bankPlan.add, ...bankPlan.update, ...(withCopies ? asBankCopies(bankPlan.localNewer) : [])];
+        const needed = new Set([...wanted.flatMap(imageIdsOf), ...imageIdsOfBank(wantedBank)]);
         for (const img of parsed.images) {
           if (!needed.has(img.id)) continue;
           const blob = base64ToBlob(img.data, img.type);
@@ -159,9 +173,12 @@ export function createBackupUi(app) {
           rememberImage(img.id, blob);
         }
         for (const sheet of wanted) await app.store.saveSheet(sheet);
+        for (const item of wantedBank) await app.store.saveBankItem(item);
         await app.refreshSheets();
+        await app.refreshBank();
         app.onLibraryChanged();
-        showResult(`Fertig: ${wanted.length} Blatt/Blätter eingespielt.`, { warnings: parsed.warnings });
+        const parts = [wanted.length && `${wanted.length} Blatt/Blätter`, wantedBank.length && `${wantedBank.length} Bank-Aufgabe(n)`].filter(Boolean);
+        showResult(`Fertig: ${parts.join(' und ') || 'nichts'} eingespielt.`, { warnings: parsed.warnings });
       } catch (err) {
         console.error(err);
         showResult(`Beim Einspielen ist ein Fehler aufgetreten: ${err.message}`, { error: true });
@@ -170,8 +187,8 @@ export function createBackupUi(app) {
 
     const buttons = [];
     if (changes) buttons.push(button(`Einspielen (${changes})`, () => apply(false), true));
-    if (plan.localNewer.length) buttons.push(button('Hier neuere als Kopien dazunehmen', () => apply(true), !changes));
-    showResult(changes || plan.localNewer.length ? `Die Datei enthält:\n${lines.join('\n')}` : 'Alle Blätter der Datei sind schon vorhanden.', {
+    if (newerHere) buttons.push(button('Hier neuere als Kopien dazunehmen', () => apply(true), !changes));
+    showResult(changes || newerHere ? `Die Datei enthält:\n${lines.join('\n')}` : 'Alles aus der Datei ist schon vorhanden.', {
       warnings: parsed.warnings,
       buttons,
     });

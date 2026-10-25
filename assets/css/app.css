@@ -288,13 +288,18 @@ math-field:focus-within { border-color: var(--blue-500); outline: 3px solid var(
 #math-overlay { position: fixed; inset: 0; z-index: 90; background: rgb(15 23 42 / 0.45); }
 #dlg-math { position: fixed; top: 5vh; left: 0; right: 0; z-index: 100; width: min(94vw, 640px); margin: 0 auto; max-height: 60vh; overflow: auto; }
 
-/* --- Ansichten: Bibliothek / Editor ------------------------------------------------------- */
+/* --- Ansichten: Bibliothek / Editor / Aufgabenbank ------------------------------------------ */
+#view-bank { display: none; }
 body[data-view="loading"] .topbar,
 body[data-view="loading"] .workspace,
 body[data-view="loading"] #view-library,
 body[data-view="library"] .topbar,
 body[data-view="library"] .workspace,
-body[data-view="editor"] #view-library { display: none; }
+body[data-view="editor"] #view-library,
+body[data-view="bank"] .topbar,
+body[data-view="bank"] .workspace,
+body[data-view="bank"] #view-library { display: none; }
+body[data-view="bank"] #view-bank { display: block; }
 
 .topbar-title { min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -361,6 +366,101 @@ body[data-view="editor"] #view-library { display: none; }
   border-radius: 0.6rem;
   font-size: 0.95rem;
 }
+/* --- Aufgabenbank ----------------------------------------------------------------------- */
+.bank { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 1500px; margin: 0 auto; padding: 16px; }
+@media (min-width: 960px) {
+  .bank:has(#bank-editor:not([hidden])) { grid-template-columns: minmax(0, 1fr) 420px; align-items: start; }
+  #bank-editor { position: sticky; top: 72px; }
+}
+@media (max-width: 959px) {
+  #bank-editor { order: -1; }
+}
+.bank-filters { display: grid; gap: 10px; margin-bottom: 14px; }
+.bank-filters .field-row { gap: 10px; }
+.tagbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.tagbar:empty { display: none; }
+.pill-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  background: #fff;
+  border: 1px solid var(--gray-300);
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pill-btn[aria-pressed="true"] { color: #fff; background: var(--blue-600); border-color: var(--blue-600); }
+
+.bank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.bank-card {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.bank-card.selected { border-color: var(--blue-600); box-shadow: 0 0 0 2px var(--blue-100); }
+.bank-open {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-height: 88px;
+  padding: 12px 44px 12px 14px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.bank-open:hover { background: var(--gray-50); }
+.bank-pick-mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-weight: 700;
+  color: #fff;
+  background: #fff;
+  border: 2px solid var(--gray-300);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.bank-card.selected .bank-pick-mark { background: var(--blue-600); border-color: var(--blue-600); }
+.bank-meta { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill { padding: 1px 9px; font-size: 0.78rem; color: var(--gray-600); background: var(--gray-100); border-radius: 999px; }
+.pill.grade { color: var(--blue-700); background: var(--blue-50); font-weight: 600; }
+.bank-img { max-width: 100%; max-height: 90px; object-fit: contain; justify-self: start; }
+.pick-list { max-height: 48vh; overflow: auto; padding: 2px; }
+dialog.wide { width: min(94vw, 900px); }
+
+/* Aufgabentext in Karten und Vorschau (ähnlich wie auf dem Blatt, aber kleiner) */
+.task-preview {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font-family: "Comic Neue", "Comic Sans MS", cursive;
+  font-size: 1.15rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  background: #fff;
+  border: 1px dashed var(--gray-300);
+  border-radius: 0.5rem;
+}
+.bank-card .task-preview { margin: 0; padding: 0; border: 0; background: none; max-height: 9.5em; overflow: hidden; }
+.task-preview:empty::before { content: "Vorschau"; color: var(--gray-500); font-family: system-ui, sans-serif; font-size: 0.85rem; }
+.task-preview .ln { margin: 0; }
+.task-preview .ln.sub, .task-preview .ln.li { display: flex; gap: 0.4em; }
+.task-preview .lbl { flex: none; min-width: 1.3em; font-weight: 700; }
+.task-preview .txt { flex: 1; min-width: 0; }
+.task-preview .katex { font-size: 1.1em; }
+
 .notes { margin: 0 0 12px; padding-left: 1.2rem; font-size: 0.9rem; color: var(--gray-600); }
 #backup-status { margin-bottom: 8px; white-space: pre-line; }
 

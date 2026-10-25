@@ -75,7 +75,7 @@ test('Formatleiste: fett, Teilaufgaben und Liste', async () => {
     const ta = document.querySelector('#f-text');
     ta.setSelectionRange(0, 8);
   });
-  await page.click('[data-tool="bold"]');
+  await page.click('#pane-task [data-tool="bold"]');
   assert.equal(await page.inputValue('#f-text'), '**Berechne**\nx\ny');
   assert.equal(await page.locator('.cell-task[data-index="2"] strong').count(), 1);
 
@@ -83,7 +83,7 @@ test('Formatleiste: fett, Teilaufgaben und Liste', async () => {
     const ta = document.querySelector('#f-text');
     ta.setSelectionRange(ta.value.indexOf('x'), ta.value.length);
   });
-  await page.click('[data-tool="sub"]');
+  await page.click('#pane-task [data-tool="sub"]');
   assert.equal(await page.inputValue('#f-text'), '**Berechne**\na) x\nb) y');
   assert.equal(await page.locator('.cell-task[data-index="2"] .ln.sub').count(), 2);
   await context.close();

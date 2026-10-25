@@ -4,12 +4,13 @@ Arbeitsblätter mit Starteraufgaben (Aufgaben links, freier Lösungsbereich rech
 
 Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 
-> **Stand: Meilenstein 3 (Formel-Editor).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen, PDF-Export und visuellem Formel-Editor; Bibliothek mit Vorschaubildern, Suche und Sortierung; Sicherung als Datei mit Erinnerung. Aufgabenbank und Zufalls-Generator folgen in den nächsten Meilensteinen.
+> **Stand: Meilenstein 4 (Aufgabenbank).** Blatt-Editor mit Auto-Anpassung, Lösungsfeldern pro Aufgabe, Bildern, Rückgängig/Wiederholen, PDF-Export und visuellem Formel-Editor; Bibliothek mit Vorschaubildern, Suche und Sortierung; Aufgabenbank mit Klassenstufe, Thema und Schlagwörtern; Sicherung als Datei (Blätter, Bank, Bilder) mit Erinnerung. Der Zufalls-Generator für Kopfrechnen folgt im nächsten Meilenstein.
 
 ## Bedienung
 
 - **Bibliothek:** Die App startet mit allen Blättern als Karten (Vorschau, Nummer, Klasse, Datum). Karte antippen = öffnen; „⋯“ an der Karte = duplizieren, als Datei sichern, löschen (mit „Rückgängig“). „‹ Bibliothek“ im Editor führt zurück.
-- **Sicherung:** „Sicherung“ oben → *Sicherung erstellen* legt eine `.json`-Datei mit allen Blättern und Bildern an (am iPad per „Teilen“ z. B. in Dateien/OneDrive, am PC als Download). *Sicherung einspielen* liest so eine Datei wieder ein: neue Blätter kommen dazu, in der Datei neuere ersetzen die lokalen, hier neuere bleiben (oder werden als Kopie übernommen). So wechseln Blätter zwischen PC und iPad. Die App erinnert nach mehreren Bearbeitungen bzw. 14 Tagen an eine Sicherung.
+- **Aufgabenbank:** „Aufgabenbank“ in der Bibliothek (oder `#/bank`) sammelt Aufgaben mit **Klassenstufe**, **Thema** und frei wählbaren **Schlagwörtern**; Filter und Suche oben, Aufgabe antippen = rechts bearbeiten (mit Formatleiste, ∑ Formel, Bild, Vorschau). Aufgaben kommen auf zwei Wegen hinein: im Blatt-Editor *Aufgabe → „In Bank speichern“* (Klassenstufe wird aus „7b“ vorbelegt, schon vorhandene werden nicht doppelt angelegt) oder in der Bank mit *„+ Neue Aufgabe“*. Ins Blatt kommen sie über **„Aus Bank …“** unter dem Blatt: mehrere antippen, „Hinzufügen“ – es entstehen **Kopien**, spätere Änderungen am Blatt ändern die Bank nicht (und umgekehrt).
+- **Sicherung:** „Sicherung“ oben → *Sicherung erstellen* legt eine `.json`-Datei mit allen Blättern, der Aufgabenbank und den Bildern an (am iPad per „Teilen“ z. B. in Dateien/OneDrive, am PC als Download). *Sicherung einspielen* liest so eine Datei wieder ein: neue Blätter kommen dazu, in der Datei neuere ersetzen die lokalen, hier neuere bleiben (oder werden als Kopie übernommen). So wechseln Blätter zwischen PC und iPad. Die App erinnert nach mehreren Bearbeitungen bzw. 14 Tagen an eine Sicherung.
 - **Im Blatt antippen:** Aufgabe (Zeile) antippen → rechts erscheint „Aufgabe“ mit Text, Formatierung, Bild, Lösungsfeld und Zeilenhöhe. Titel, Nummer, Zeit usw. antippen → das passende Feld im Reiter „Blatt“.
 - **Text:** `**fett**`, `*kursiv*`, `__unterstrichen__`, Zeilen mit `a) ` als Teilaufgaben, `- ` als Aufzählung, `\$` für ein echtes Dollarzeichen (die Knöpfe über dem Textfeld setzen das für dich).
 - **Formeln:** Knopf **∑ Formel** über dem Textfeld → Formel-Editor: am iPad mit eigener Zahlen-Tastatur (Bruch `a⁄b`, Komma, `·`, `:`, `%`, Hochzahl, Wurzel, ≤ ≥ ≠), am PC auch per Tippen (`3/4` → Bruch, `x^2`, `sqrt`). „Einfügen“ setzt die Formel als `$…$` in den Text. Steht der Cursor in einer Formel, öffnet der Knopf sie zum **Ändern**. Option „Große Darstellung“ zeigt Brüche in voller Höhe. Dezimalkommas (`3,5`) werden eng gesetzt. Unter „⋯ → Voreinstellungen“ lässt sich der Editor abschalten; der Knopf setzt dann nur `$…$`, und du schreibst die Formel selbst als LaTeX (z. B. `$\frac{3}{4}$`).
@@ -21,11 +22,18 @@ Die App liegt hier: <https://lukasderewaelder.github.io/starteraufgaben/>
 - Die App lädt **nichts von fremden Servern** (keine CDNs, keine Google Fonts, keine Statistik). Alle Bibliotheken und Schriften liegen in diesem Repo.
 - Dieses Repository ist öffentlich. Hier liegt nur der **Programmcode**. Deine Arbeitsblätter und Bilder bleiben später auf deinem Gerät (Browser-Speicher) bzw. in Sicherungsdateien, die du selbst ablegst (z. B. OneDrive).
 
-## iPad-Test (Meilenstein 3)
+## iPad-Test (Meilenstein 4)
 
 Die installierte App holt sich die neue Version selbst: beim nächsten Start erscheint oben „Eine neue Version ist bereit“ → **Jetzt aktualisieren**.
 
-Neu in diesem Meilenstein (Formel-Editor):
+Neu in diesem Meilenstein (Aufgabenbank):
+
+1. Im Blatt eine Aufgabe antippen → **In Bank speichern**: Öffnet sich der Dialog (Klassenstufe, Thema, Schlagwörter), und landet die Aufgabe danach unter **Bibliothek → Aufgabenbank**?
+2. In der Bank: Filter (Klasse, Thema, Schlagwort) und Suche; Aufgabe antippen → rechts bearbeiten, auch mit **∑ Formel** und einem Bild. Im Hochformat erscheint der Bearbeiten-Bereich über der Liste.
+3. Im Blatt-Editor **Aus Bank …**: mehrere Aufgaben wählen → **Hinzufügen**. Kommen Text, Formeln und Bilder korrekt auf das Blatt?
+4. **Sicherung** erstellen und am PC einspielen: sind die Bank-Aufgaben samt Bildern da?
+
+Davor (Meilenstein 3, Formel-Editor):
 
 1. Aufgabe antippen, **∑ Formel** tippen: Öffnet sich der Dialog, und fährt unten die Zahlen-Tastatur ein (Tabs 123, Symbole, abc, αβγ)?
 2. Einen Bruch tippen (`a⁄b`-Taste, Zähler, Pfeil nach rechts, Nenner), dazu ein Komma, `·` und `:` → **Einfügen**: steht die Formel im Text und im Blatt?

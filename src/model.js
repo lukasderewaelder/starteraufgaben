@@ -24,6 +24,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   defaultFormat: DEFAULT_FORMAT,
   defaultSolutionStyle: 'leer',
   formulaEditor: true, // Formel-Knopf öffnet den visuellen Editor (MathLive); aus = `$…$` selbst tippen
+  lastBankKlassenstufe: '', // zuletzt beim „In Bank speichern“ gewählt (Vorbelegung)
+  lastBankThema: '',
   // Sicherungs-Erinnerung (siehe backup.js)
   lastBackupAt: 0,
   changesSinceBackup: 0,

@@ -4,6 +4,7 @@ import {
   BACKUP_FORMAT,
   BACKUP_VERSION,
   afterBackup,
+  asBankCopies,
   asCopies,
   backupFilename,
   backupReminder,
@@ -15,6 +16,7 @@ import {
   registerChange,
   snooze,
 } from '../src/backup.js';
+import { newBankItem } from '../src/bank.js';
 import { newSheet } from '../src/model.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -46,6 +48,52 @@ test('Sicherung: bauen und wieder lesen ergibt dieselben Blätter und Bilder', a
   assert.deepEqual(parsed.sheets.find((s) => s.id === a.id), a);
   assert.equal(parsed.images[0].type, 'image/png');
   assert.deepEqual(new Uint8Array(await base64ToBlob(parsed.images[0].data, 'image/png').arrayBuffer()), new Uint8Array(await png().arrayBuffer()));
+});
+
+test('Sicherung mit Bank: Aufgaben und ihre Bilder gehen mit, auch ohne Blätter', async () => {
+  const item = newBankItem({ text: 'Mit Bild', imageId: 'bi', klassenstufe: '6', thema: 'Brüche', tags: ['a'] });
+  const backup = await buildBackup({
+    sheets: [],
+    bank: [item],
+    images: [{ id: 'bi', blob: png(), width: 3, height: 3 }, { id: 'weg', blob: png(), width: 1, height: 1 }],
+  });
+  assert.deepEqual(backup.images.map((i) => i.id), ['bi']);
+  const parsed = parseBackup(JSON.stringify(backup));
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.sheets.length, 0);
+  assert.deepEqual(parsed.bank, [item]);
+  assert.equal(parsed.images.length, 1);
+});
+
+test('Bank in der Sicherung wird bereinigt: kaputte Einträge und fehlende Bilder', () => {
+  const good = newBankItem({ text: 'ok', imageId: 'fehlt', klassenstufe: '5' });
+  const file = { format: BACKUP_FORMAT, version: 1, sheets: [], bank: [good, 'kaputt', { id: 'x', text: 'y', klassenstufe: '99', tags: 'nein' }], images: [] };
+  const parsed = parseBackup(JSON.stringify(file));
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.bank.length, 2);
+  assert.equal(parsed.bank.find((i) => i.id === good.id).imageId, null);
+  assert.equal(parsed.bank.find((i) => i.id === 'x').klassenstufe, '');
+  assert.equal(parsed.warnings.length, 2);
+});
+
+test('Alte Sicherungen ohne Bank bleiben lesbar', () => {
+  const s = newSheet({ number: 1 });
+  const parsed = parseBackup(JSON.stringify({ format: BACKUP_FORMAT, version: 1, sheets: [s], images: [] }));
+  assert.equal(parsed.ok, true);
+  assert.deepEqual(parsed.bank, []);
+});
+
+test('planImport und asBankCopies funktionieren auch für Bank-Aufgaben', () => {
+  const a = { ...newBankItem({ text: 'a' }), id: 'a', updatedAt: 100 };
+  const b = { ...newBankItem({ text: 'b' }), id: 'b', updatedAt: 300 };
+  const plan = planImport([a, b], [{ ...a, updatedAt: 200 }, { ...b, updatedAt: 100 }, { ...newBankItem({ text: 'c' }), id: 'c' }]);
+  assert.deepEqual(plan.update.map((i) => i.id), ['a']);
+  assert.deepEqual(plan.localNewer.map((i) => i.id), ['b']);
+  assert.deepEqual(plan.add.map((i) => i.id), ['c']);
+  const [copy] = asBankCopies([b], 7);
+  assert.notEqual(copy.id, 'b');
+  assert.equal(copy.text, 'b');
+  assert.equal(copy.createdAt, 7);
 });
 
 test('Fehlerhafte Dateien werden mit verständlicher Meldung abgelehnt', () => {

@@ -1,6 +1,8 @@
-// App-Rahmen: Speicher, Einstellungen, Routing (Bibliothek ↔ Editor) und die gemeinsamen Dialoge.
+// App-Rahmen: Speicher, Einstellungen, Routing (Bibliothek ↔ Editor ↔ Aufgabenbank) und die gemeinsamen Dialoge.
 import { createBackupUi } from './backup-ui.js';
 import { registerChange } from './backup.js';
+import { imageIdsOfBank } from './bank.js';
+import { createBankUi } from './bank-ui.js';
 import { collectDiagnostics, diagnosticsToText } from './diagnose.js';
 import { createEditor } from './editor.js';
 import { FORMATS } from './formats.js';
@@ -30,9 +32,18 @@ export async function startApp() {
   $('#storage-banner').hidden = store.persistent;
   navigator.storage?.persist?.().catch(() => {});
 
-  const app = { store, settings: await store.getSettings(), sheets: [], lastChangeAt: 0 };
+  const app = { store, settings: await store.getSettings(), sheets: [], bank: [], lastChangeAt: 0 };
   app.refreshSheets = async () => {
     app.sheets = await store.listSheets();
+  };
+  app.refreshBank = async () => {
+    app.bank = await store.listBank();
+  };
+  /** Zählt eine Bearbeitung für die Sicherungs-Erinnerung (Blätter und Bank). */
+  app.noteChange = () => {
+    const patch = registerChange(app.settings, app.lastChangeAt);
+    app.lastChangeAt = Date.now();
+    if (Object.keys(patch).length) app.setSettings(patch).catch((err) => console.warn(err));
   };
   app.setSettings = async (patch) => {
     Object.assign(app.settings, patch);
@@ -42,17 +53,27 @@ export async function startApp() {
   // --- Navigation ---------------------------------------------------------------------------
   let editor;
   let library;
+  let bank;
   let routing = Promise.resolve();
   async function doRoute() {
+    if (location.hash === '#/bank') {
+      await editor.close();
+      library.clear();
+      await bank.show();
+      return;
+    }
+    await bank.leave();
     const id = currentSheetId();
     if (id) {
       if (await editor.open(id)) {
         library.clear();
+        bank.clear();
         return;
       }
       history.replaceState(null, '', '#/'); // unbekanntes Blatt -> Bibliothek
     }
     await editor.close();
+    bank.clear();
     await library.show();
   }
   const route = () => {
@@ -77,9 +98,7 @@ export async function startApp() {
   app.onSheetSaved = (sheet) => {
     const entry = structuredClone(sheet);
     app.sheets = [entry, ...app.sheets.filter((s) => s.id !== entry.id)];
-    const patch = registerChange(app.settings, app.lastChangeAt);
-    app.lastChangeAt = Date.now();
-    if (Object.keys(patch).length) app.setSettings(patch).catch((err) => console.warn(err));
+    app.noteChange();
   };
 
   app.createSheet = async (base) => {
@@ -173,8 +192,12 @@ export async function startApp() {
   app.formula = createFormulaDialog();
   editor = createEditor(app);
   library = createLibrary(app);
+  bank = createBankUi(app);
+  app.pickFromBank = (options) => bank.pick(options);
+  app.saveToBank = (task, sheet) => bank.saveTask(task, sheet);
 
   await app.refreshSheets();
+  await app.refreshBank();
   if (!app.sheets.length) {
     await store.saveSheet(newSheet({ number: 1, settings: app.settings, taskTexts: FIRST_SHEET_TASKS }));
     await app.refreshSheets();
@@ -183,7 +206,7 @@ export async function startApp() {
   await route();
 
   // Bilder, die kein Blatt mehr braucht, aufräumen (nur beim Start, damit „Rückgängig“ sicher ist).
-  const used = new Set(app.sheets.flatMap(imageIdsOf));
+  const used = new Set([...app.sheets.flatMap(imageIdsOf), ...imageIdsOfBank(app.bank)]);
   store
     .listImageIds()
     .then((ids) => Promise.all(ids.filter((id) => !used.has(id)).map((id) => store.deleteImage(id))))

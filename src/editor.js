@@ -1,4 +1,4 @@
-// Editor: verbindet Modell, Blatt-Vorschau, Seitenleiste, Speicher und PDF-Export für ein geöffnetes Blatt.
+﻿// Editor: verbindet Modell, Blatt-Vorschau, Seitenleiste, Speicher und PDF-Export für ein geöffnetes Blatt.
 import { applyPrintPageSize, canSharePdf, createPdf, downloadPdf, openPdf, pdfFile, printSheet, safeFilename, sharePdf } from './export-pdf.js';
 import { autoFit } from './fit.js';
 import { FORMATS } from './formats.js';
@@ -6,7 +6,7 @@ import { History } from './history.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
 import { MAX_TASKS, WEIGHTS, duplicateTask, imageIdsOf, moveTask, newTask } from './model.js';
 import { SOLUTION_STYLES, fitPreview, patchHeader, patchTaskText, renderSheet } from './sheet.js';
-import { findMathAt, putFormula, toggleList, toggleSubtasks, toggleWrap, wrapMath } from './text-tools.js';
+import { wireTextToolbar } from './toolbar.js';
 import { $, fill, mb, toast } from './ui.js';
 
 export function createEditor(app) {
@@ -300,52 +300,7 @@ export function createEditor(app) {
     commit(`text-${task.id}`);
   });
 
-  const TOOLS = {
-    bold: (v, s, e) => toggleWrap(v, s, e, '**'),
-    italic: (v, s, e) => toggleWrap(v, s, e, '*'),
-    underline: (v, s, e) => toggleWrap(v, s, e, '__'),
-    sub: toggleSubtasks,
-    list: toggleList,
-  };
-  function applyToText(result, { focus = true } = {}) {
-    text.value = result.text;
-    text.setSelectionRange(result.start, result.end);
-    if (focus) text.focus();
-    text.dispatchEvent(new Event('input'));
-  }
-
-  // Formel einfügen oder ändern: liegt der Cursor in einer Formel, wird diese im Editor geöffnet.
-  async function formulaTool() {
-    const { value, selectionStart: start, selectionEnd: end } = text;
-    if (!app.settings.formulaEditor) {
-      applyToText(wrapMath(value, start, end));
-      return;
-    }
-    const hit = findMathAt(value, start, end);
-    const wasLarge = Boolean(hit?.latex.trimStart().startsWith('\\displaystyle'));
-    const result = await app.formula.edit({
-      latex: hit ? hit.latex.replace(/^\s*\\displaystyle\s*/, '') : '',
-      large: wasLarge,
-      title: hit ? 'Formel ändern' : 'Formel einfügen',
-      confirm: hit ? 'Übernehmen' : 'Einfügen',
-    });
-    if (!result || !sheet?.tasks[selected]) return;
-    // Der Text kann sich währenddessen nicht geändert haben (Dialog ist modal); Auswahl bleibt im Feld erhalten.
-    applyToText(putFormula(text.value, start, end, result.latex, { hit, large: result.large }), { focus: false });
-  }
-
-  document.querySelectorAll('.toolbar [data-tool]').forEach((button) => {
-    // Fokus im Textfeld lassen, damit am iPad die Tastatur offen bleibt.
-    button.addEventListener('pointerdown', (e) => e.preventDefault());
-    button.addEventListener('click', () => {
-      if (button.dataset.tool === 'math') {
-        formulaTool();
-        return;
-      }
-      const tool = TOOLS[button.dataset.tool];
-      if (tool) applyToText(tool(text.value, text.selectionStart, text.selectionEnd));
-    });
-  });
+  wireTextToolbar({ toolbar: $('#pane-task .toolbar'), textarea: text, app, isActive: () => Boolean(sheet?.tasks[selected]) });
 
   $('#f-task-solution').addEventListener('change', (e) => {
     sheet.tasks[selected].solutionStyle = e.target.value || null;
@@ -393,6 +348,23 @@ export function createEditor(app) {
     commit();
   }
   $('#btn-add-task').addEventListener('click', addTask);
+
+  // Aufgaben aus der Aufgabenbank übernehmen (als Kopien; das Blatt bleibt unabhängig von der Bank).
+  $('#btn-bank-pick').addEventListener('click', async () => {
+    const room = MAX_TASKS - sheet.tasks.length;
+    const items = await app.pickFromBank({ room });
+    if (!items?.length || !sheet) return;
+    const first = sheet.tasks.length;
+    for (const item of items) sheet.tasks.push({ ...newTask(item.text), imageId: item.imageId, solution: item.solution });
+    await loadImages(sheet);
+    renderAll();
+    selectTask(first, { focus: false });
+    commit();
+    toast(items.length === 1 ? 'Aufgabe aus der Bank hinzugefügt.' : `${items.length} Aufgaben aus der Bank hinzugefügt.`);
+  });
+  $('#btn-task-bank').addEventListener('click', () => {
+    if (sheet?.tasks[selected]) app.saveToBank(sheet.tasks[selected], sheet);
+  });
 
   const step = (delta) => selectTask(Math.min(Math.max(selected + delta, 0), sheet.tasks.length - 1), { focus: false });
   $('#btn-task-prev').addEventListener('click', () => step(-1));

@@ -1,5 +1,6 @@
 // Lokaler Speicher (IndexedDB). Fällt auf einen Arbeitsspeicher-Speicher zurück, wenn IndexedDB
 // nicht nutzbar ist (z. B. manche privaten Fenster) – dann zeigt die App eine Warnung.
+import { normalizeBankItem } from './bank.js';
 import { DEFAULT_SETTINGS, normalizeSheet } from './model.js';
 
 const DB_NAME = 'starteraufgaben';
@@ -49,6 +50,16 @@ function buildApi(backend, persistent) {
     },
     saveSheet: (sheet) => backend.put('sheets', structuredClone(sheet)),
     deleteSheet: (id) => backend.delete('sheets', id),
+
+    async listBank() {
+      const all = await backend.getAll('bank');
+      return all.map((i) => normalizeBankItem(i)).filter(Boolean).sort((a, b) => b.updatedAt - a.updatedAt);
+    },
+    async getBankItem(id) {
+      return normalizeBankItem(await backend.get('bank', id));
+    },
+    saveBankItem: (item) => backend.put('bank', structuredClone(item)),
+    deleteBankItem: (id) => backend.delete('bank', id),
 
     saveImage: (image) => backend.put('images', image), // { id, blob, width, height }
     getImage: (id) => backend.get('images', id),

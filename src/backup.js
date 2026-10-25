@@ -1,9 +1,10 @@
 // Sicherung als Datei: Blätter + Bilder -> JSON und zurück. Reine Logik (kein DOM) bis auf Blob/atob, die auch Node kennt.
-import { duplicateSheet, imageIdsOf, normalizeSheet } from './model.js';
+import { imageIdsOfBank, normalizeBankItem } from './bank.js';
+import { duplicateSheet, imageIdsOf, normalizeSheet, uid } from './model.js';
 
 export const BACKUP_FORMAT = 'starteraufgaben-sicherung';
 export const BACKUP_VERSION = 1;
-export const LIMITS = { fileChars: 200 * 1024 * 1024, sheets: 5000, images: 2000, imageBytes: 12 * 1024 * 1024 };
+export const LIMITS = { fileChars: 200 * 1024 * 1024, sheets: 5000, bank: 20_000, images: 2000, imageBytes: 12 * 1024 * 1024 };
 
 // Erinnerung: nach so vielen Bearbeitungen (je 10 Minuten Abstand) oder Tagen seit der ersten ungesicherten Änderung.
 export const REMINDER_CHANGES = 5;
@@ -29,15 +30,19 @@ export function base64ToBlob(data, type) {
   return new Blob([bytes], { type });
 }
 
-/** `images`: [{ id, blob, width, height }] – es werden nur die von den Blättern benutzten gesichert. */
-export async function buildBackup({ sheets, images, now = Date.now() }) {
-  const used = new Set(sheets.flatMap(imageIdsOf));
+/**
+ * `images`: [{ id, blob, width, height }] – es werden nur die von Blättern und Bank-Aufgaben benutzten gesichert.
+ * `bank` ist optional (die Sicherung eines einzelnen Blatts enthält keine Bank).
+ */
+export async function buildBackup({ sheets, bank = [], images, now = Date.now() }) {
+  const used = new Set([...sheets.flatMap(imageIdsOf), ...imageIdsOfBank(bank)]);
   const wanted = images.filter((i) => used.has(i.id) && i.blob);
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: now,
     sheets: structuredClone(sheets),
+    bank: structuredClone(bank),
     images: await Promise.all(
       wanted.map(async (i) => ({ id: i.id, type: i.blob.type, width: i.width, height: i.height, data: await blobToBase64(i.blob) })),
     ),
@@ -55,7 +60,7 @@ export function backupFilename({ scope, sheet, now = new Date() }) {
 
 const fail = (error) => ({ ok: false, error });
 
-/** Liest eine Sicherungsdatei (Text) und prüft sie gründlich. Gibt { ok, sheets, images, warnings } oder { ok: false, error }. */
+/** Liest eine Sicherungsdatei (Text) und prüft sie gründlich. Gibt { ok, sheets, bank, images, warnings } oder { ok: false, error }. */
 export function parseBackup(text, { now = Date.now() } = {}) {
   if (typeof text !== 'string' || text.length > LIMITS.fileChars) return fail('Die Datei ist zu groß oder leer.');
   let data;
@@ -70,8 +75,11 @@ export function parseBackup(text, { now = Date.now() } = {}) {
   }
 
   const rawSheets = Array.isArray(data.sheets) ? data.sheets : [];
+  const rawBank = Array.isArray(data.bank) ? data.bank : [];
   const rawImages = Array.isArray(data.images) ? data.images : [];
-  if (rawSheets.length > LIMITS.sheets || rawImages.length > LIMITS.images) return fail('Die Sicherung enthält unplausibel viele Einträge.');
+  if (rawSheets.length > LIMITS.sheets || rawBank.length > LIMITS.bank || rawImages.length > LIMITS.images) {
+    return fail('Die Sicherung enthält unplausibel viele Einträge.');
+  }
 
   const warnings = [];
   const images = [];
@@ -119,14 +127,32 @@ export function parseBackup(text, { now = Date.now() } = {}) {
     const other = byId.get(sheet.id);
     if (!other || other.updatedAt < sheet.updatedAt) byId.set(sheet.id, sheet);
   }
-  if (badSheets) warnings.push(`${badSheets} unlesbare(s) Blatt/Blätter wurden übersprungen.`);
-  if (missingImages) warnings.push(`${missingImages} fehlende(s) Bild(er) werden als „kein Bild“ übernommen.`);
-  if (!byId.size) return fail('Die Sicherung enthält kein lesbares Blatt.');
 
-  return { ok: true, sheets: [...byId.values()], images, warnings };
+  const bankById = new Map();
+  let badBank = 0;
+  for (const raw of rawBank) {
+    const item = normalizeBankItem(raw, { now });
+    if (!item) {
+      badBank += 1;
+      continue;
+    }
+    if (item.imageId && !known.has(item.imageId)) {
+      item.imageId = null;
+      missingImages += 1;
+    }
+    const other = bankById.get(item.id);
+    if (!other || other.updatedAt < item.updatedAt) bankById.set(item.id, item);
+  }
+
+  if (badSheets) warnings.push(`${badSheets} unlesbare(s) Blatt/Blätter wurden übersprungen.`);
+  if (badBank) warnings.push(`${badBank} unlesbare Aufgabe(n) der Bank wurden übersprungen.`);
+  if (missingImages) warnings.push(`${missingImages} fehlende(s) Bild(er) werden als „kein Bild“ übernommen.`);
+  if (!byId.size && !bankById.size) return fail('Die Sicherung enthält kein lesbares Blatt und keine Bank-Aufgabe.');
+
+  return { ok: true, sheets: [...byId.values()], bank: [...bankById.values()], images, warnings };
 }
 
-/** Was passiert beim Einspielen? Gleiche Blatt-ID: das neuere (nach updatedAt) gewinnt. */
+/** Was passiert beim Einspielen (Blätter und Bank-Aufgaben)? Gleiche ID: das Neuere (nach updatedAt) gewinnt. */
 export function planImport(local, incoming) {
   const byId = new Map(local.map((s) => [s.id, s]));
   const plan = { add: [], update: [], same: 0, localNewer: [] };
@@ -143,6 +169,11 @@ export function planImport(local, incoming) {
 /** Kopien lokal neuerer Blätter (neue IDs), damit nichts verloren geht, wenn beide Seiten bearbeitet wurden. */
 export function asCopies(sheets, now = Date.now()) {
   return sheets.map((s) => duplicateSheet(s, { number: s.number, now }));
+}
+
+/** Dasselbe für Bank-Aufgaben. */
+export function asBankCopies(items, now = Date.now()) {
+  return items.map((i) => ({ ...structuredClone(i), id: uid(), createdAt: now, updatedAt: now }));
 }
 
 // --- Erinnerung --------------------------------------------------------------------------------

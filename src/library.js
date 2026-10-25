@@ -151,6 +151,7 @@ export function createLibrary(app) {
   sortSelect.addEventListener('change', render);
   $('#lib-new').addEventListener('click', () => app.createSheet());
   $('#lib-backup').addEventListener('click', () => app.backup.open());
+  $('#lib-bank').addEventListener('click', () => app.go('#/bank'));
   $('#lib-menu').addEventListener('click', () => $('#dlg-libmenu').showModal());
   $('#reminder-now').addEventListener('click', () => app.backup.open());
   $('#reminder-later').addEventListener('click', async () => {

@@ -102,7 +102,7 @@ const readLatex = (field) => cleanLatex(field.getValue('latex-expanded'));
 // Der Dialog ist bewusst NICHT modal (show() statt showModal()): ein modaler Dialog liegt in der obersten Ebene des
 // Browsers, und MathLive kann die Bildschirmtastatur dort nicht am unteren Bildschirmrand platzieren. Stattdessen
 // dimmt ein eigener Hintergrund (#math-overlay) die Seite, und der Rest der App ist solange „inert“.
-const BACKGROUND = ['.topbar', '.workspace'];
+const BACKGROUND = ['.topbar', '.workspace', '#view-library', '#view-bank'];
 
 export function createFormulaDialog() {
   const dialog = $('#dlg-math');

@@ -5,7 +5,7 @@ html, body {
   height: auto !important;
   background: #fff !important;
 }
-.topbar, .libbar, #view-library, .banner, .panel, .task-bar, .fit-note, dialog, #toast, #sel-box { display: none !important; }
+.topbar, .libbar, #view-library, #view-bank, .banner, .panel, .task-bar, .fit-note, dialog, #toast, #sel-box { display: none !important; }
 .workspace { display: block !important; height: 0 !important; padding: 0 !important; overflow: hidden !important; }
 #sheet {
   position: fixed !important;

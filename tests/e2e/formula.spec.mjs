@@ -23,7 +23,7 @@ const setCaret = (page, start, end = start) =>
 test('∑ Formel: Dialog öffnet, getippter Bruch landet als $…$ im Text und im Blatt', async () => {
   const { context, page, problems, foreign } = await app.openApp();
   await selectTask(page, 1, 'Wie viel ist');
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   assert.equal(await page.textContent('#math-title'), 'Formel einfügen');
   assert.equal(await page.isDisabled('#math-ok'), true, 'ohne Eingabe nichts einzufügen');
@@ -44,7 +44,7 @@ test('Cursor in einer Formel: Dialog zeigt sie zum Ändern, „Große Darstellun
   const { context, page } = await app.openApp();
   await selectTask(page, 0, 'a $\\frac{1}{2}$ b');
   await setCaret(page, 6);
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   assert.equal(await page.textContent('#math-title'), 'Formel ändern');
   await page.waitForFunction(() => document.querySelector('math-field')?.getValue('latex') === '\\frac{1}{2}');
@@ -56,7 +56,7 @@ test('Cursor in einer Formel: Dialog zeigt sie zum Ändern, „Große Darstellun
 
   // Noch einmal öffnen: \displaystyle steckt in der Option, nicht im Formelfeld.
   await setCaret(page, 8);
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   await page.waitForFunction(() => document.querySelector('math-field')?.getValue('latex') === '\\frac{1}{2}');
   assert.equal(await page.isChecked('#math-large'), true);
@@ -69,7 +69,7 @@ test('Zweite Formel an anderer Stelle: bestehende Formeln bleiben, Leerzeichen s
   const { context, page } = await app.openApp();
   await selectTask(page, 2, 'Berechne $x$ und ');
   await setCaret(page, 17);
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   await typeFormula(page, 'y^2');
   await page.waitForFunction(() => !document.querySelector('#math-ok').disabled);
@@ -82,7 +82,7 @@ test('Zweite Formel an anderer Stelle: bestehende Formeln bleiben, Leerzeichen s
 test('Bildschirmtastatur erscheint unten am Bildschirm und verdeckt den Dialog nicht', async () => {
   const { context, page } = await app.openApp();
   await selectTask(page, 0, '');
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   await page.evaluate(() => window.mathVirtualKeyboard.show({ animate: false }));
   await page.waitForSelector('.MLK__plate', { state: 'visible' });
@@ -98,7 +98,7 @@ test('Bildschirmtastatur erscheint unten am Bildschirm und verdeckt den Dialog n
 test('Eigene Zahlen-Tastatur: Bruch, Komma, Malpunkt und Geteilt-Zeichen', async () => {
   const { context, page, problems } = await app.openApp();
   await selectTask(page, 0, '');
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   await page.evaluate(() => window.mathVirtualKeyboard.show({ animate: false }));
   await page.waitForSelector('.MLK__plate', { state: 'visible' });
@@ -123,7 +123,7 @@ test('Eigene Zahlen-Tastatur: Bruch, Komma, Malpunkt und Geteilt-Zeichen', async
 test('Abbrechen und Klick auf den Hintergrund verändern nichts; die Seite dahinter ist währenddessen gesperrt', async () => {
   const { context, page } = await app.openApp();
   await selectTask(page, 0, 'Text');
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   assert.equal(await page.evaluate(() => document.querySelector('.workspace').inert), true);
   await typeFormula(page, 'x');
@@ -132,7 +132,7 @@ test('Abbrechen und Klick auf den Hintergrund verändern nichts; die Seite dahin
   assert.equal(await page.inputValue('#f-text'), 'Text');
   assert.equal(await page.evaluate(() => document.querySelector('.workspace').inert), false);
 
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   await page.waitForSelector('#dlg-math[open] math-field');
   await page.mouse.click(30, 700); // auf den abgedunkelten Hintergrund
   await page.waitForSelector('#dlg-math', { state: 'hidden' });
@@ -152,7 +152,7 @@ test('Voreinstellung „Visueller Formel-Editor“ aus: Knopf setzt nur $…$ zu
 
   await selectTask(page, 0, 'Rechne ');
   await setCaret(page, 7);
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   assert.equal(await page.isVisible('#dlg-math'), false);
   assert.equal(await page.inputValue('#f-text'), 'Rechne $$');
   assert.equal(await page.evaluate(() => document.querySelector('#f-text').selectionStart), 8);
@@ -160,7 +160,7 @@ test('Voreinstellung „Visueller Formel-Editor“ aus: Knopf setzt nur $…$ zu
   // markierten Text in $…$ einschließen
   await page.fill('#f-text', 'x+y z');
   await setCaret(page, 0, 3);
-  await page.click('[data-tool="math"]');
+  await page.click('#pane-task [data-tool="math"]');
   assert.equal(await page.inputValue('#f-text'), '$x+y$ z');
 
   // Einstellung bleibt nach dem Neuladen
