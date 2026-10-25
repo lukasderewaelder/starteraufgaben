@@ -1,19 +1,10 @@
 // Aufgabentypen für Zufallsaufgaben. Jeder Typ beschreibt seine Einstellungen (params) und erzeugt mit
 // item(rng, params) eine Aufgabe { text, solution, data } – text/solution enthalten `$…$` für Formeln.
 // Rechnen mit Dezimalzahlen geschieht in skalierten Ganzzahlen (siehe numfmt.js).
-import { fmtScaled, frac, fractionResult, math, mixed, randScaled } from './numfmt.js';
+import { decimalsParam, fmt, intParam, item, pow10, rangeParams } from './helpers.js';
+import { frac, fractionResult, math, mixed, randScaled } from './numfmt.js';
 import { gcd, lcm } from './rng.js';
-
-const intParam = (key, label, def, min, max, extra = {}) => ({ key, kind: 'int', label, default: def, min, max, ...extra });
-const rangeParams = (min, max, label = 'Zahlenraum') => [
-  intParam('min', `${label} von`, min, 0, 1_000_000, { row: 'range' }),
-  intParam('max', 'bis', max, 1, 1_000_000, { row: 'range' }),
-];
-const decimalsParam = (def = 0, label = 'Dezimalstellen', max = 3, extra = {}) =>
-  intParam('decimals', label, def, 0, max, { hint: '0 = ganze Zahlen', ...extra });
-const item = (text, solution, data) => ({ text, solution, data });
-const pow10 = (e) => 10 ** e;
-const fmt = (n, d, opts) => fmtScaled(n, d, opts);
+import { TERM_GENERATORS } from './defs-terms.js';
 
 // --- Rechnen: + − · : -------------------------------------------------------------------------
 const arith = {
@@ -625,4 +616,5 @@ export const GENERATOR_LIST = [
   round,
   compare,
   units,
+  ...TERM_GENERATORS,
 ];

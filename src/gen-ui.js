@@ -42,7 +42,7 @@ export function createGeneratorDialog(app) {
   for (const [groupName, list] of generatorGroups()) {
     const group = document.createElement('optgroup');
     group.label = groupName;
-    for (const g of list) group.append(new Option(g.label, g.id));
+    for (const g of list) group.append(new Option(g.grades ? `${g.label} (Kl. ${g.grades})` : g.label, g.id));
     typeSelect.append(group);
   }
 
