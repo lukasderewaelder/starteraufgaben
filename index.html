@@ -21,7 +21,7 @@
   <script src="vendor/katex/katex.min.js"></script>
   <script type="module" src="src/main.js"></script>
 </head>
-<body>
+<body data-view="loading">
   <div id="update-banner" class="banner" role="status" hidden>
     <span>Eine neue Version ist bereit.</span>
     <button type="button" class="btn btn-small" id="btn-update">Jetzt aktualisieren</button>
@@ -30,12 +30,41 @@
     Speichern im Browser ist hier nicht möglich (z. B. privates Fenster). Änderungen gehen beim Schließen verloren.
   </div>
 
+  <!-- Bibliothek: Übersicht aller Blätter -->
+  <div id="view-library">
+    <header class="libbar">
+      <h1 class="brand">Starteraufgaben</h1>
+      <span class="spacer"></span>
+      <button type="button" id="lib-backup" class="btn">Sicherung</button>
+      <button type="button" id="lib-menu" class="btn btn-icon" aria-label="Menü" title="Menü" aria-haspopup="dialog">⋯</button>
+      <button type="button" id="lib-new" class="btn btn-primary">+ Neues Blatt</button>
+    </header>
+    <main class="library">
+      <div id="backup-reminder" class="reminder" role="status" hidden>
+        <span id="reminder-text"></span>
+        <span class="btn-row">
+          <button type="button" id="reminder-now" class="btn btn-small btn-primary">Jetzt sichern</button>
+          <button type="button" id="reminder-later" class="btn btn-small">Später</button>
+        </span>
+      </div>
+      <div class="lib-tools">
+        <label for="lib-search" class="sr-only">Blätter durchsuchen</label>
+        <input id="lib-search" type="search" placeholder="Blätter durchsuchen …" autocomplete="off">
+        <label for="lib-sort" class="sr-only">Sortierung</label>
+        <select id="lib-sort">
+          <option value="recent">Zuletzt bearbeitet</option>
+          <option value="number-desc">Nummer (hoch → niedrig)</option>
+          <option value="number-asc">Nummer (niedrig → hoch)</option>
+        </select>
+      </div>
+      <p id="lib-empty" class="muted" hidden></p>
+      <div id="lib-grid" class="lib-grid"></div>
+    </main>
+  </div>
+
   <header class="topbar">
-    <h1 class="brand">Starteraufgaben</h1>
-    <div class="sheet-switch">
-      <label for="sel-sheet" class="sr-only">Blatt wechseln</label>
-      <select id="sel-sheet"></select>
-    </div>
+    <button type="button" id="btn-library" class="btn">‹ Bibliothek</button>
+    <span id="topbar-title" class="topbar-title"></span>
     <span class="spacer"></span>
     <span id="save-state" class="save-state" role="status"></span>
     <button type="button" id="btn-undo" class="btn btn-icon" aria-label="Rückgängig" title="Rückgängig">↶</button>
@@ -154,10 +183,48 @@
     <div class="menu-list">
       <button type="button" class="btn" id="m-new">Neues Blatt</button>
       <button type="button" class="btn" id="m-dup">Blatt duplizieren</button>
+      <button type="button" class="btn" id="m-file">Blatt als Datei sichern</button>
       <button type="button" class="btn btn-danger" id="m-del">Blatt löschen</button>
       <button type="button" class="btn" id="m-settings">Voreinstellungen</button>
       <button type="button" class="btn" id="m-diag">Diagnose</button>
     </div>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-libmenu" aria-labelledby="dlg-libmenu-title">
+    <h2 id="dlg-libmenu-title">Menü</h2>
+    <div class="menu-list">
+      <button type="button" class="btn" id="lm-settings">Voreinstellungen</button>
+      <button type="button" class="btn" id="lm-diag">Diagnose</button>
+    </div>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-card" aria-labelledby="dlg-card-title">
+    <h2 id="dlg-card-title">Blatt</h2>
+    <div class="menu-list">
+      <button type="button" class="btn btn-primary" id="c-open">Öffnen</button>
+      <button type="button" class="btn" id="c-dup">Duplizieren</button>
+      <button type="button" class="btn" id="c-file">Als Datei sichern</button>
+      <button type="button" class="btn btn-danger" id="c-del">Löschen</button>
+    </div>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-backup" aria-labelledby="backup-title">
+    <h2 id="backup-title">Sicherung</h2>
+    <div id="backup-home">
+      <p class="muted">Eine Sicherung ist eine Datei mit allen Blättern und Bildern. Lege sie z. B. in OneDrive ab – so kommst du auch von PC zu iPad an deine Blätter.</p>
+      <div class="menu-list">
+        <button type="button" class="btn btn-primary" id="backup-make">Sicherung erstellen</button>
+        <label class="btn" for="backup-file">Sicherung einspielen …</label>
+        <input id="backup-file" type="file" accept=".json,application/json" class="sr-only">
+      </div>
+      <p id="backup-last" class="muted"></p>
+    </div>
+    <p id="backup-status" role="status"></p>
+    <ul id="backup-notes" class="notes" hidden></ul>
+    <div id="backup-actions" class="btn-row"></div>
     <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
   </dialog>
 

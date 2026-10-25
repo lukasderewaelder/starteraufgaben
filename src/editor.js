@@ -1,45 +1,21 @@
-// Editor: verbindet Modell, Blatt-Vorschau, Seitenleiste, Speicher und PDF-Export.
-import { collectDiagnostics, diagnosticsToText } from './diagnose.js';
+// Editor: verbindet Modell, Blatt-Vorschau, Seitenleiste, Speicher und PDF-Export für ein geöffnetes Blatt.
 import { applyPrintPageSize, canSharePdf, createPdf, downloadPdf, openPdf, pdfFile, printSheet, safeFilename, sharePdf } from './export-pdf.js';
 import { autoFit } from './fit.js';
 import { FORMATS } from './formats.js';
 import { History } from './history.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
-import {
-  DEFAULT_SETTINGS,
-  MAX_TASKS,
-  WEIGHTS,
-  duplicateSheet,
-  duplicateTask,
-  imageIdsOf,
-  moveTask,
-  newSheet,
-  newTask,
-  nextNumber,
-} from './model.js';
+import { MAX_TASKS, WEIGHTS, duplicateTask, imageIdsOf, moveTask, newTask } from './model.js';
 import { SOLUTION_STYLES, fitPreview, patchHeader, patchTaskText, renderSheet } from './sheet.js';
-import { openStore } from './store.js';
 import { toggleList, toggleSubtasks, toggleWrap } from './text-tools.js';
+import { $, fill, mb, toast } from './ui.js';
 
-const $ = (selector) => document.querySelector(selector);
-
-const FIRST_SHEET_TASKS = [
-  'Berechne:\n$7 \\cdot 5$',
-  'Runde die Zahl 388 auf Hunderter.',
-  'Wie viele Sekunden hat eine Minute?',
-  'Welche der Figuren sind Dreiecke?',
-];
-
-export async function startEditor() {
+export function createEditor(app) {
   const sheetEl = $('#sheet');
   const wrapper = $('#preview-wrapper');
   const selBox = $('#sel-box');
   const history = new History();
 
-  let store;
-  let settings = { ...DEFAULT_SETTINGS };
-  let sheets = [];
-  let sheet = null;
+  let sheet = null; // das geöffnete Blatt (null, wenn die Bibliothek zu sehen ist)
   let selected = null; // Index der gewählten Aufgabe oder null
   let previewSize = null;
   let fitInfo = { fit: 1, overflow: false, cells: [] };
@@ -47,60 +23,46 @@ export async function startEditor() {
   let dirty = false;
   let lastExport = null;
   let pdfToken = 0;
-  let toastTimer = null;
 
-  // --- kleine Helfer ------------------------------------------------------------------------
-  const fill = (select, entries, withDefault) => {
-    select.replaceChildren();
-    if (withDefault) select.add(new Option(withDefault, ''));
-    for (const [value, label] of entries) select.add(new Option(label, value));
-  };
-  const formatEntries = Object.values(FORMATS).map((f) => [f.id, f.label]);
   const styleEntries = Object.entries(SOLUTION_STYLES);
-  const weightLabel = (w) => `${String(w).replace('.', ',')}×`;
+  fill($('#f-format'), Object.values(FORMATS).map((f) => [f.id, f.label]));
+  fill($('#f-solution'), styleEntries);
+  fill($('#f-task-solution'), styleEntries, 'Wie Blatt (Standard)');
+  fill($('#f-weight'), WEIGHTS.map((w) => [String(w), `${String(w).replace('.', ',')}×`]));
 
-  function toast(text, { action, onAction, ms = 6000 } = {}) {
-    $('#toast-text').textContent = text;
-    const btn = $('#toast-action');
-    btn.hidden = !action;
-    btn.textContent = action ?? '';
-    btn.onclick = () => {
-      $('#toast').hidden = true;
-      onAction?.();
-    };
-    $('#toast').hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => ($('#toast').hidden = true), ms);
-  }
-
-  function setSaveState(text) {
+  const setSaveState = (text) => {
     $('#save-state').textContent = text;
-  }
+  };
 
   // --- Speichern ----------------------------------------------------------------------------
   function markDirty() {
     dirty = true;
     setSaveState('Speichert …');
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(flushSave, 500);
+    saveTimer = setTimeout(flush, 500);
   }
 
-  async function flushSave() {
+  async function flush() {
     clearTimeout(saveTimer);
     if (!dirty || !sheet) return;
     dirty = false;
     sheet.updatedAt = Date.now();
     try {
-      await store.saveSheet(sheet);
-      const entry = structuredClone(sheet);
-      sheets = [entry, ...sheets.filter((s) => s.id !== entry.id)];
-      refreshSwitcher();
-      setSaveState(store.persistent ? 'Gespeichert' : 'Nicht dauerhaft gespeichert');
+      await app.store.saveSheet(sheet);
+      app.onSheetSaved(sheet);
+      setSaveState(app.store.persistent ? 'Gespeichert' : 'Nicht dauerhaft gespeichert');
     } catch (err) {
       console.error(err);
       dirty = true;
       setSaveState('Speichern fehlgeschlagen');
     }
+  }
+
+  /** Verwirft ungespeicherte Änderungen des Blatts mit dieser ID (vor dem Löschen). */
+  function discard(id) {
+    if (sheet?.id !== id) return;
+    clearTimeout(saveTimer);
+    dirty = false;
   }
 
   function commit(key = null) {
@@ -110,18 +72,10 @@ export async function startEditor() {
   }
 
   // --- Anzeige ------------------------------------------------------------------------------
-  function refreshSwitcher() {
-    const select = $('#sel-sheet');
-    fill(
-      select,
-      sheets.map((s) => [s.id, `Nr. ${s.number} – ${s.title}${s.klasse ? ` (${s.klasse})` : ''}`]),
-    );
-    select.value = sheet?.id ?? '';
-  }
-
   function updateTopbar() {
     $('#btn-undo').disabled = !history.canUndo;
     $('#btn-redo').disabled = !history.canRedo;
+    $('#topbar-title').textContent = sheet ? `Nr. ${sheet.number} – ${sheet.title}` : '';
   }
 
   function updateFitNote() {
@@ -142,8 +96,7 @@ export async function startEditor() {
   }
 
   function updateChips() {
-    const box = $('#task-chips');
-    box.replaceChildren(
+    $('#task-chips').replaceChildren(
       ...sheet.tasks.map((_, i) => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -159,12 +112,8 @@ export async function startEditor() {
   }
 
   function updateOverlay() {
-    if (selected === null) {
-      selBox.hidden = true;
-      return;
-    }
-    const task = sheetEl.querySelector(`.cell-task[data-index="${selected}"]`);
-    const solution = sheetEl.querySelector(`.cell-sol[data-index="${selected}"]`);
+    const task = selected === null ? null : sheetEl.querySelector(`.cell-task[data-index="${selected}"]`);
+    const solution = selected === null ? null : sheetEl.querySelector(`.cell-sol[data-index="${selected}"]`);
     if (!task || !solution) {
       selBox.hidden = true;
       return;
@@ -243,11 +192,7 @@ export async function startEditor() {
   }
 
   function selectTask(index, { focus = true } = {}) {
-    if (index === null || !sheet.tasks[index]) {
-      selected = null;
-    } else {
-      selected = index;
-    }
+    selected = index !== null && sheet.tasks[index] ? index : null;
     showTab(selected === null ? 'sheet' : 'task');
     fillTaskForm();
     updateChips();
@@ -276,45 +221,43 @@ export async function startEditor() {
     input.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
-  // --- Blätter laden und wechseln -----------------------------------------------------------
-  async function loadImages(target) {
-    await Promise.all(imageIdsOf(target).map((id) => imageUrl(store, id)));
-  }
+  // --- Öffnen und Schließen -----------------------------------------------------------------
+  const loadImages = (target) => Promise.all(imageIdsOf(target).map((id) => imageUrl(app.store, id)));
 
-  async function setSheet(next) {
-    sheet = next;
+  /** Öffnet das Blatt mit dieser ID; false, wenn es nicht existiert. */
+  async function open(id) {
+    await flush();
+    const loaded = await app.store.getSheet(id);
+    if (!loaded) return false;
+    await loadImages(loaded);
+    sheet = loaded;
     history.reset(sheet);
     selected = null;
-    await loadImages(sheet);
+    document.body.dataset.view = 'editor'; // erst jetzt sichtbar, damit die Anpassung echte Maße misst
     fillSheetForm();
     showTab('sheet');
     fillTaskForm();
     renderAll();
-    refreshSwitcher();
-    await store.setSetting('lastSheetId', sheet.id);
+    setSaveState(app.store.persistent ? 'Gespeichert' : 'Nicht dauerhaft gespeichert');
+    return true;
   }
 
-  async function createSheet(base) {
-    await flushSave();
-    const created = base ?? newSheet({ number: nextNumber(sheets), settings });
-    await store.saveSheet(created);
-    sheets = [structuredClone(created), ...sheets.filter((s) => s.id !== created.id)];
-    await setSheet(created);
-    setSaveState(store.persistent ? 'Gespeichert' : 'Nicht dauerhaft gespeichert');
-  }
-
-  async function removeUnusedImages() {
-    const used = new Set(sheets.flatMap(imageIdsOf));
-    for (const id of await store.listImageIds()) if (!used.has(id)) await store.deleteImage(id);
+  async function close() {
+    if (!sheet) return;
+    await flush();
+    sheet = null;
+    selected = null;
   }
 
   // --- Änderungen am Blatt ------------------------------------------------------------------
   function bindSheetField(selector, prop, { rerender = false } = {}) {
     $(selector).addEventListener('input', (e) => {
+      if (!sheet) return;
       sheet[prop] = e.target.value;
       if (rerender) renderAll();
       else afterPatch(patchHeader(sheetEl, sheet));
       commit(`sheet-${prop}`);
+      updateTopbar();
     });
   }
   bindSheetField('#f-title', 'title');
@@ -334,6 +277,7 @@ export async function startEditor() {
 
   // Antippen im Blatt
   sheetEl.addEventListener('click', (e) => {
+    if (!sheet) return;
     const field = e.target.closest('[data-field]');
     if (field) {
       focusSheetField(field.dataset.field);
@@ -344,12 +288,12 @@ export async function startEditor() {
   });
 
   // Bilder laden nach: Größe der Zeile ändert sich -> neu anpassen
-  sheetEl.addEventListener('load', () => afterPatch(autoFit(sheetEl)), true);
+  sheetEl.addEventListener('load', () => sheet && afterPatch(autoFit(sheetEl)), true);
 
   // --- Aufgabe bearbeiten -------------------------------------------------------------------
   const text = $('#f-text');
   text.addEventListener('input', () => {
-    const task = sheet.tasks[selected];
+    const task = sheet?.tasks[selected];
     if (!task) return;
     task.text = text.value;
     afterPatch(patchTaskText(sheetEl, sheet, selected));
@@ -394,7 +338,7 @@ export async function startEditor() {
     if (!file || selected === null) return;
     try {
       const image = await prepareImage(file);
-      await store.saveImage(image);
+      await app.store.saveImage(image);
       rememberImage(image.id, image.blob);
       sheet.tasks[selected].imageId = image.id;
       renderAll();
@@ -463,7 +407,7 @@ export async function startEditor() {
 
   // --- Rückgängig / Wiederholen ---------------------------------------------------------------
   async function applySnapshot(snapshot) {
-    if (!snapshot) return;
+    if (!snapshot || !sheet) return;
     sheet = snapshot;
     await loadImages(sheet);
     if (selected !== null && selected >= sheet.tasks.length) selected = sheet.tasks.length - 1;
@@ -477,6 +421,7 @@ export async function startEditor() {
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-redo').addEventListener('click', redo);
   document.addEventListener('keydown', (e) => {
+    if (!sheet || document.body.dataset.view !== 'editor') return;
     const mod = e.ctrlKey || e.metaKey;
     const typing = e.target.closest?.('input, textarea, select');
     if (!mod || typing) return;
@@ -490,7 +435,7 @@ export async function startEditor() {
     }
   });
 
-  // --- Tabs, Dialoge, Menü ------------------------------------------------------------------
+  // --- Reiter, Menü -------------------------------------------------------------------------
   $('#tab-sheet').addEventListener('click', () => {
     selected = null;
     showTab('sheet');
@@ -503,93 +448,21 @@ export async function startEditor() {
     else showTab('task');
   });
 
-  document.querySelectorAll('dialog').forEach((dialog) => {
-    dialog.addEventListener('click', (e) => {
-      if (e.target.closest('[data-close]')) dialog.close();
-      else if (e.target === dialog) {
-        const r = dialog.getBoundingClientRect();
-        const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-        if (outside) dialog.close();
-      }
-    });
-  });
-
-  $('#sel-sheet').addEventListener('change', async (e) => {
-    const target = sheets.find((s) => s.id === e.target.value);
-    if (!target) return;
-    await flushSave();
-    await setSheet(structuredClone(target));
-  });
-
+  $('#btn-library').addEventListener('click', () => app.go('#/'));
   $('#btn-menu').addEventListener('click', () => $('#dlg-menu').showModal());
   const fromMenu = (id, fn) =>
     $(id).addEventListener('click', async () => {
       $('#dlg-menu').close();
       await fn();
     });
-  fromMenu('#m-new', () => createSheet());
-  fromMenu('#m-dup', () => createSheet(duplicateSheet(sheet, { number: nextNumber(sheets) })));
-  fromMenu('#m-del', async () => {
-    if (!window.confirm(`Blatt „${sheet.title}“ (Nr. ${sheet.number}) wirklich löschen?`)) return;
-    clearTimeout(saveTimer);
-    dirty = false;
-    await store.deleteSheet(sheet.id);
-    sheets = sheets.filter((s) => s.id !== sheet.id);
-    if (sheets.length) await setSheet(structuredClone(sheets[0]));
-    else await createSheet();
-    toast('Blatt gelöscht.');
-  });
-  fromMenu('#m-settings', () => $('#dlg-settings').showModal());
-  fromMenu('#m-diag', async () => {
-    $('#dlg-diag').showModal();
-    await refreshDiagnostics();
-  });
-
-  // Voreinstellungen
-  $('#s-format').addEventListener('change', async (e) => {
-    settings.defaultFormat = e.target.value;
-    await store.setSetting('defaultFormat', settings.defaultFormat);
-  });
-  $('#s-solution').addEventListener('change', async (e) => {
-    settings.defaultSolutionStyle = e.target.value;
-    await store.setSetting('defaultSolutionStyle', settings.defaultSolutionStyle);
-  });
-
-  // Diagnose
-  let diagRows = [];
-  async function refreshDiagnostics() {
-    diagRows = await collectDiagnostics(lastExport);
-    $('#diag-list').replaceChildren(
-      ...diagRows.map((row) => {
-        const li = document.createElement('li');
-        li.className = row.state;
-        const dot = document.createElement('span');
-        dot.className = 'dot';
-        const label = document.createElement('span');
-        label.className = 'label';
-        label.textContent = row.label;
-        const value = document.createElement('span');
-        value.className = 'value';
-        value.textContent = row.value;
-        li.append(dot, label, value);
-        return li;
-      }),
-    );
-  }
-  $('#btn-diag').addEventListener('click', refreshDiagnostics);
-  $('#btn-diag-copy').addEventListener('click', async () => {
-    const textToCopy = diagnosticsToText(diagRows);
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-      $('#diag-copied').hidden = false;
-      setTimeout(() => ($('#diag-copied').hidden = true), 3000);
-    } catch {
-      window.prompt('Diagnose kopieren:', textToCopy);
-    }
-  });
+  fromMenu('#m-new', () => app.createSheet());
+  fromMenu('#m-dup', () => app.duplicateSheet(sheet));
+  fromMenu('#m-file', () => app.backup.open({ sheets: [sheet] }));
+  fromMenu('#m-del', () => app.deleteSheet(sheet));
+  fromMenu('#m-settings', () => app.openSettings());
+  fromMenu('#m-diag', () => app.openDiagnostics());
 
   // --- PDF ----------------------------------------------------------------------------------
-  const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2).replace('.', ',')} MB`;
   const actionButton = (label, onClick, primary = false) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -600,7 +473,7 @@ export async function startEditor() {
   };
 
   async function exportPdf() {
-    await flushSave();
+    await flush();
     const dialog = $('#dlg-pdf');
     const status = $('#pdf-status');
     const actions = $('#pdf-actions');
@@ -644,47 +517,17 @@ export async function startEditor() {
     setTimeout(() => printSheet(sheet.format), 150);
   });
 
-  // --- Start --------------------------------------------------------------------------------
-  fill($('#f-format'), formatEntries);
-  fill($('#s-format'), formatEntries);
-  fill($('#f-solution'), styleEntries);
-  fill($('#s-solution'), styleEntries);
-  fill($('#f-task-solution'), styleEntries, 'Wie Blatt (Standard)');
-  fill($('#f-weight'), WEIGHTS.map((w) => [String(w), weightLabel(w)]));
-
-  store = await openStore();
-  $('#storage-banner').hidden = store.persistent;
-  settings = await store.getSettings();
-  $('#s-format').value = settings.defaultFormat;
-  $('#s-solution').value = settings.defaultSolutionStyle;
-  sheets = await store.listSheets();
-  navigator.storage?.persist?.().catch(() => {});
-
-  // Schrift zuerst laden, damit die erste Anpassung mit den echten Maßen rechnet.
-  await document.fonts?.load('32px "Comic Neue"').catch(() => {});
-
-  const lastId = settings.lastSheetId;
-  const start = sheets.find((s) => s.id === lastId) ?? sheets[0];
-  if (start) {
-    await setSheet(structuredClone(start));
-  } else {
-    await createSheet(newSheet({ number: 1, settings, taskTexts: FIRST_SHEET_TASKS }));
-  }
-  removeUnusedImages().catch(() => {});
-  setSaveState(store.persistent ? 'Gespeichert' : 'Nicht dauerhaft gespeichert');
-
+  // --- Hintergrundereignisse ----------------------------------------------------------------
   new ResizeObserver(() => {
-    if (!previewSize) return;
+    if (!sheet || !previewSize) return;
     fitPreview(wrapper, sheetEl, previewSize);
     updateOverlay();
   }).observe(wrapper);
-  document.fonts?.ready.then(() => afterPatch(autoFit(sheetEl)));
-
+  document.fonts?.ready.then(() => sheet && afterPatch(autoFit(sheetEl)));
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushSave();
+    if (document.visibilityState === 'hidden') flush();
   });
-  window.addEventListener('pagehide', flushSave);
+  window.addEventListener('pagehide', flush);
 
-  // Für Tests und Fehlersuche
-  window.__starteraufgaben = { getSheet: () => sheet, flushSave, store: () => store };
+  return { open, close, flush, discard, getSheet: () => sheet, getLastExport: () => lastExport };
 }

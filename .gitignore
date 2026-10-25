@@ -1,10 +1,10 @@
-node_modules/
+﻿node_modules/
 test-results/
 playwright-report/
 *.log
 .DS_Store
 Thumbs.db
-# Echte Arbeitsblätter/Backups gehören nie ins (öffentliche) Repo
-*.starteraufgaben.json
+# Echte Arbeitsblätter/Sicherungen gehören nie ins (öffentliche) Repo
+*Sicherung*.json
 privat/
 .claude/

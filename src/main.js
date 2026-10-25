@@ -1,5 +1,5 @@
-// Startpunkt: Service Worker einrichten und den Editor starten.
-import { startEditor } from './editor.js';
+// Startpunkt: Service Worker einrichten und die App starten.
+import { startApp } from './app.js';
 
 function setupServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -41,8 +41,9 @@ function setupServiceWorker() {
 
 setupServiceWorker();
 
-startEditor().catch((err) => {
+startApp().catch((err) => {
   console.error(err);
+  document.body.dataset.view = 'error';
   const box = document.createElement('div');
   box.className = 'banner banner-warn';
   box.setAttribute('role', 'alert');

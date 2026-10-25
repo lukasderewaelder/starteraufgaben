@@ -277,7 +277,84 @@ math-field {
   border-radius: 0.5rem;
 }
 
+/* --- Ansichten: Bibliothek / Editor ------------------------------------------------------- */
+body[data-view="loading"] .topbar,
+body[data-view="loading"] .workspace,
+body[data-view="loading"] #view-library,
+body[data-view="library"] .topbar,
+body[data-view="library"] .workspace,
+body[data-view="editor"] #view-library { display: none; }
+
+.topbar-title { min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+.libbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+}
+.library { max-width: 1400px; margin: 0 auto; padding: 16px; }
+.lib-tools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 12px; margin-bottom: 16px; }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+.card-sheet {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.card-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.card-open:hover .thumb { border-color: var(--blue-500); }
+.thumb {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+  pointer-events: none;
+}
+.thumb .sheet { box-shadow: none; }
+.card-meta { display: grid; gap: 2px; padding: 10px 56px 12px 12px; font-size: 0.85rem; color: var(--gray-600); }
+.card-meta strong { color: var(--gray-800); font-size: 1rem; }
+.card-meta .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-menu { position: absolute; right: 8px; bottom: 8px; }
+
+.reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--amber-100);
+  border: 1px solid var(--amber-500);
+  border-radius: 0.6rem;
+  font-size: 0.95rem;
+}
+.notes { margin: 0 0 12px; padding-left: 1.2rem; font-size: 0.9rem; color: var(--gray-600); }
+#backup-status { margin-bottom: 8px; white-space: pre-line; }
+
 @media (max-width: 600px) {
   .brand { display: none; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
+  .lib-tools { grid-template-columns: 1fr; }
 }

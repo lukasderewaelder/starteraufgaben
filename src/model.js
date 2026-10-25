@@ -23,6 +23,11 @@ export function todayIso(now = new Date()) {
 export const DEFAULT_SETTINGS = Object.freeze({
   defaultFormat: DEFAULT_FORMAT,
   defaultSolutionStyle: 'leer',
+  // Sicherungs-Erinnerung (siehe backup.js)
+  lastBackupAt: 0,
+  changesSinceBackup: 0,
+  firstChangeAt: 0,
+  reminderSnoozedUntil: 0,
 });
 
 export function newTask(text = '') {

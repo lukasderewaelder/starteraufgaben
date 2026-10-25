@@ -1,47 +1,10 @@
-// Browser-Tests des Editors (Meilenstein 1). Nutzt das installierte Edge/Chrome (PW_CHANNEL), weil
-// Playwrights eigene Browser hier nicht heruntergeladen werden können.
+﻿// Browser-Tests des Editors (Blatt bearbeiten, Layout, Export, Offline).
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
-import { chromium } from 'playwright';
-import { startServer } from '../../tools/serve.mjs';
+import { test } from 'node:test';
+import { PNG_1X1, useApp } from './helpers.mjs';
 
-let server;
-let base;
-let browser;
-
-before(async () => {
-  let port;
-  ({ server, port } = await startServer(0));
-  base = `http://localhost:${port}/`;
-  browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'msedge' });
-});
-
-after(async () => {
-  await browser?.close();
-  server?.close();
-});
-
-const PNG_1X1 = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64',
-);
-
-async function openApp(url = base, viewport = { width: 1376, height: 1000 }) {
-  const context = await browser.newContext({ viewport, acceptDownloads: true });
-  const page = await context.newPage();
-  const problems = [];
-  const foreign = [];
-  page.on('console', (m) => m.type() === 'error' && problems.push(m.text()));
-  page.on('pageerror', (e) => problems.push(String(e)));
-  page.on('request', (r) => {
-    const u = r.url();
-    if (!u.startsWith(base) && !u.startsWith('data:') && !u.startsWith('blob:')) foreign.push(u);
-  });
-  await page.goto(url);
-  await page.waitForSelector('.sheet .sheet-title');
-  return { context, page, problems, foreign };
-}
-
+const app = useApp();
+const openApp = (opts) => app.openApp(opts);
 const saved = (page) => page.waitForFunction(() => document.querySelector('#save-state').textContent === 'Gespeichert');
 const taskTexts = (page) => page.evaluate(() => window.__starteraufgaben.getSheet().tasks.map((t) => t.text));
 
@@ -54,7 +17,7 @@ test('Start: erstes Blatt mit den vier Beispielaufgaben, ohne Fehler und ohne Fr
     'Welche der Figuren sind Dreiecke?',
   ]);
   assert.equal(await page.locator('.cell-task').count(), 4);
-  assert.ok((await page.locator('.sheet .katex').count()) > 0);
+  assert.ok((await page.locator('#sheet .katex').count()) > 0);
   assert.ok(await page.evaluate(() => document.fonts.check('32px "Comic Neue"')));
   assert.equal(await page.inputValue('#f-format'), 'tabloid');
   assert.deepEqual(problems, []);
@@ -73,7 +36,7 @@ test('Antippen einer Aufgabe wählt sie aus; Tippen aktualisiert das Blatt und w
   assert.ok((await page.locator('.cell-task[data-index="1"] .katex').count()) > 0);
   await saved(page);
   await page.reload();
-  await page.waitForSelector('.sheet .sheet-title');
+  await page.waitForSelector('#sheet .sheet-title');
   assert.equal((await taskTexts(page))[1], 'Wie viel ist $\\frac{1}{2}$ von 10?');
   await context.close();
 });
@@ -244,7 +207,7 @@ test('Bild: wird verkleinert gespeichert, im Blatt angezeigt und überlebt das N
   await context.close();
 });
 
-test('Blätter: neues Blatt, wechseln, duplizieren, löschen; Voreinstellungen für neue Blätter', async () => {
+test('Neues Blatt aus dem Menü übernimmt die Voreinstellungen und die nächste Nummer', async () => {
   const { context, page } = await openApp();
   await page.click('#btn-menu');
   await page.click('#m-settings');
@@ -254,37 +217,42 @@ test('Blätter: neues Blatt, wechseln, duplizieren, löschen; Voreinstellungen f
 
   await page.click('#btn-menu');
   await page.click('#m-new');
-  await page.waitForFunction(() => document.querySelector('#sel-sheet').options.length === 2);
-  assert.equal(await page.inputValue('#f-number'), '2');
+  await page.waitForFunction(() => document.querySelector('#f-number').value === '2');
   assert.equal(await page.inputValue('#f-format'), 'a3');
   assert.equal(await page.inputValue('#f-solution'), 'liniert');
-  assert.equal(await page.locator('.cell-sol.sol-liniert').count(), 4);
+  assert.equal(await page.locator('#sheet .cell-sol.sol-liniert').count(), 4);
 
   await page.click('#btn-menu');
   await page.click('#m-dup');
-  await page.waitForFunction(() => document.querySelector('#sel-sheet').options.length === 3);
-  assert.equal(await page.inputValue('#f-number'), '3');
-
-  const firstId = await page.evaluate(() => [...document.querySelector('#sel-sheet').options].at(-1).value);
-  await page.selectOption('#sel-sheet', firstId);
-  await page.waitForFunction(() => document.querySelector('#f-number').value === '1');
-  assert.equal(await page.inputValue('#f-format'), 'tabloid');
-
-  page.once('dialog', (d) => d.accept());
-  await page.click('#btn-menu');
-  await page.click('#m-del');
-  await page.waitForFunction(() => document.querySelector('#sel-sheet').options.length === 2);
+  await page.waitForFunction(() => document.querySelector('#f-number').value === '3');
 
   // Die Voreinstellung bleibt nach dem Neuladen erhalten.
-  await page.reload();
-  await page.waitForSelector('.sheet .sheet-title');
-  await page.click('#btn-menu');
-  await page.click('#m-settings');
+  await page.goto(app.base);
+  await page.waitForSelector('#lib-grid .card-sheet');
+  await page.click('#lib-menu');
+  await page.click('#lm-settings');
   assert.equal(await page.inputValue('#s-format'), 'a3');
   assert.equal(await page.inputValue('#s-solution'), 'liniert');
   await context.close();
 });
 
+test('Blatt löschen im Editor: zurück zur Bibliothek, mit Rückgängig', async () => {
+  const { context, page } = await openApp();
+  await page.click('#btn-menu');
+  await page.click('#m-new');
+  await page.waitForFunction(() => document.querySelector('#f-number').value === '2');
+  await page.fill('#f-title', 'Zum Löschen');
+  await saved(page);
+  await page.click('#btn-menu');
+  await page.click('#m-del');
+  await page.waitForSelector('#lib-grid .card-sheet');
+  assert.equal(await page.locator('#lib-grid .card-sheet').count(), 1);
+  assert.match(await page.textContent('#toast-text'), /Nr\. 2 gelöscht/);
+  await page.click('#toast-action');
+  await page.waitForFunction(() => document.querySelectorAll('#lib-grid .card-sheet').length === 2);
+  assert.match(await page.textContent('#lib-grid'), /Zum Löschen/);
+  await context.close();
+});
 test('PDF-Dialog: erstellt ein PDF mit Teilen/Herunterladen und lässt das Blatt unverändert', async () => {
   const { context, page } = await openApp();
   const before = await page.evaluate(() => {
@@ -340,7 +308,7 @@ test('Drucken: genau eine Seite in der Blattgröße (Vektor-PDF über die Drucka
 });
 
 test('Offline: nach dem ersten Besuch startet die App ohne Netz, Daten und Export funktionieren', async () => {
-  const { context, page } = await openApp(`${base}?sw=1`);
+  const { context, page } = await openApp({ url: `${app.base}?sw=1` });
   await page.fill('#f-title', 'Offline-Blatt');
   await saved(page);
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -361,7 +329,7 @@ test('Offline: nach dem ersten Besuch startet die App ohne Netz, Daten und Expor
   );
   await context.setOffline(true);
   await page.reload();
-  await page.waitForSelector('.sheet .sheet-title');
+  await page.waitForSelector('#sheet .sheet-title');
   assert.equal(await page.textContent('.sheet-title'), 'Offline-Blatt');
   await page.click('#btn-pdf');
   await page.waitForSelector('#pdf-actions button');
@@ -370,7 +338,7 @@ test('Offline: nach dem ersten Besuch startet die App ohne Netz, Daten und Expor
 });
 
 test('iPad-Hochformat: nichts läuft seitlich über, Bedienelemente sind groß genug', async () => {
-  const { context, page } = await openApp(base, { width: 1032, height: 1376 });
+  const { context, page } = await openApp({ viewport: { width: 1032, height: 1376 } });
   const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assert.equal(overflowX, 0);
   const small = await page.evaluate(() =>
