@@ -1,0 +1,16 @@
+{
+  "name": "starteraufgaben",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Starteraufgaben-Generator als offlinefähige WebApp (PC und iPad)",
+  "scripts": {
+    "serve": "node tools/serve.mjs",
+    "precache": "node tools/precache.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "test:e2e": "node --test --test-concurrency=1 \"tests/e2e/*.spec.mjs\""
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

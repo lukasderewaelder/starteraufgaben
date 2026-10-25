@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starteraufgaben Generator</title>
+    
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- KaTeX for LaTeX Math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Comic Neue Font for the Worksheet -->
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* The container for the live preview */
+        #preview-wrapper {
+            width: 100%;
+            display: flex;
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* The actual worksheet, fixed to Tabloid Landscape (17x11 inches @ 96dpi = 1632x1056 px) */
+        #worksheet {
+            width: 1632px;
+            height: 1056px;
+            background: white;
+            transform-origin: top left;
+            position: relative;
+            padding: 40px;
+            box-sizing: border-box;
+            font-family: 'Comic Neue', cursive;
+            color: black;
+            flex-shrink: 0;
+            /* Box shadow for web view, removed in PDF */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+        }
+
+        /* Äußerer Rahmen analog zum Screenshot */
+        .ws-page-border {
+            border: 4px solid black;
+            border-radius: 12px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        /* Header styling inside the worksheet */
+        .ws-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .ws-header-left {
+            display: flex;
+            align-items: baseline;
+            gap: 40px;
+            flex-grow: 1;
+        }
+        
+        .ws-title {
+            font-size: 52px;
+            text-decoration: underline;
+            margin: 0;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .ws-number {
+            width: 90px;
+            height: 90px;
+            border: 4px solid black;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .ws-instructions {
+            font-size: 32px;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        /* Table styling inside the worksheet */
+        .ws-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 4px solid black;
+            flex-grow: 1; /* Dehnt die Tabelle auf den restlichen Platz aus! */
+            table-layout: fixed; /* Gleichmäßige Spaltenverteilung */
+        }
+
+        .ws-table th, .ws-table td {
+            border: 3px solid black;
+            padding: 25px;
+            vertical-align: top;
+        }
+
+        .ws-table th {
+            font-size: 38px;
+            font-weight: bold;
+            text-align: left;
+            width: 50%;
+            height: 1%; /* Trick, damit der Header nicht mitwächst */
+        }
+
+        .ws-table td {
+            font-size: 32px;
+            width: 50%;
+            /* Höhe der td-Elemente wird automatisch und gleichmäßig bis unten verteilt */
+        }
+
+        .ws-task-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            display: block;
+        }
+        
+        /* KaTeX overrides for Comic Neue scaling */
+        .katex { font-size: 1.15em; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+    <div class="max-w-[1600px] mx-auto p-4 md:p-6 lg:flex lg:gap-8">
+        
+        <!-- LEFT PANEL: Editor -->
+        <div class="w-full lg:w-1/3 space-y-6 mb-8 lg:mb-0 flex flex-col">
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h1 class="text-2xl font-bold mb-4 text-blue-600">Starteraufgaben</h1>
+                <p class="text-sm text-gray-500 mb-6">Erstelle Arbeitsblätter im <strong>Tabloid-Querformat (17x11 Zoll)</strong>. Nutze <code>$ ... $</code> für LaTeX-Formeln (z.B. <code>$7 \cdot 5$</code>).</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Titel des Blattes</label>
+                        <input type="text" id="input-title" value="Starteraufgaben" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" oninput="updateState()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nummer (oben rechts)</label>
+                        <input type="text" id="input-number" value="1" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" oninput="updateState()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Anweisungen / Text (optional)</label>
+                        <textarea id="input-instructions" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none" rows="2" oninput="updateState()" placeholder="Z.B.: Löse die Aufgaben in den ersten 5 Minuten."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-1 overflow-y-auto max-h-[600px]" id="tasks-editor-container">
+                <h2 class="text-lg font-bold mb-4">Aufgaben</h2>
+                <div id="tasks-list" class="space-y-4">
+                    <!-- Tasks will be generated here by JS -->
+                </div>
+                
+                <button onclick="addTask()" class="mt-4 w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-blue-500 hover:text-blue-500 transition">
+                    + Aufgabe hinzufügen
+                </button>
+            </div>
+            
+            <button onclick="exportPDF()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.5 10a.5.5 0 0 1 .5.5v3.9a.5.5 0 0 1-1 0V10.5a.5.5 0 0 1 .5-.5ZM1 14.5a.5.5 0 0 1 .5.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-1Z"/>
+                </svg>
+                PDF Exportieren (Tabloid Querformat)
+            </button>
+        </div>
+
+        <!-- RIGHT PANEL: Live Preview -->
+        <div class="w-full lg:w-2/3">
+            <div class="sticky top-6">
+                <h2 class="text-lg font-bold mb-4">Live-Vorschau (Querformat 17x11)</h2>
+                
+                <!-- Wrapper for scaling -->
+                <div id="preview-wrapper">
+                    <!-- Actual Worksheet 1632x1056 -->
+                    <div id="worksheet">
+                        
+                        <!-- Äußerer Rahmen mit voller Höhe -->
+                        <div class="ws-page-border">
+                            
+                            <div class="ws-header">
+                                <div class="ws-header-left">
+                                    <h1 class="ws-title" id="preview-title">Starteraufgaben</h1>
+                                    <div id="preview-instructions" class="ws-instructions" style="display: none;"></div>
+                                </div>
+                                <div class="ws-number" id="preview-number">1</div>
+                            </div>
+
+                            <table class="ws-table">
+                                <thead>
+                                    <tr>
+                                        <th>Aufgaben</th>
+                                        <th>Lösungen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-tbody">
+                                    <!-- Table rows will be generated here -->
+                                </tbody>
+                            </table>
+                            
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let appState = {
+            title: "Starteraufgaben",
+            number: "1",
+            instructions: "",
+            tasks: [
+                { id: 1, text: "Berechne:\n$7 \\cdot 5$", image: null },
+                { id: 2, text: "Runde die Zahl 388 auf Hunderter.", image: null },
+                { id: 3, text: "Wie viele Sekunden hat eine Minute?", image: null },
+                { id: 4, text: "Welche der Figuren sind Dreiecke?", image: null }
+            ],
+            nextId: 5
+        };
+
+        // --- CORE FUNCTIONS ---
+        function escapeHTML(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        
+        function updateState() {
+            appState.title = document.getElementById('input-title').value;
+            appState.number = document.getElementById('input-number').value;
+            appState.instructions = document.getElementById('input-instructions').value;
+            renderPreview();
+        }
+
+        function updateTaskText(id, value) {
+            const task = appState.tasks.find(t => t.id === id);
+            if (task) {
+                task.text = value;
+                renderPreview();
+            }
+        }
+
+        function handleImageUpload(event, id) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const task = appState.tasks.find(t => t.id === id);
+                if (task) {
+                    task.image = e.target.result;
+                    renderEditor();
+                    renderPreview();
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(id) {
+            const task = appState.tasks.find(t => t.id === id);
+            if (task) {
+                task.image = null;
+                renderEditor();
+                renderPreview();
+            }
+        }
+
+        function addTask() {
+            appState.tasks.push({
+                id: appState.nextId++,
+                text: "Neue Aufgabe",
+                image: null
+            });
+            renderEditor();
+            renderPreview();
+        }
+
+        function removeTask(id) {
+            appState.tasks = appState.tasks.filter(t => t.id !== id);
+            renderEditor();
+            renderPreview();
+        }
+
+        function renderEditor() {
+            const listEl = document.getElementById('tasks-list');
+            listEl.innerHTML = '';
+
+            appState.tasks.forEach((task, index) => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = "p-4 bg-gray-50 border rounded-lg relative";
+                
+                let imageSection = '';
+                if (task.image) {
+                    imageSection = `
+                        <div class="mt-2 relative inline-block">
+                            <img src="${task.image}" class="h-16 object-contain rounded border border-gray-300">
+                            <button onclick="removeImage(${task.id})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow hover:bg-red-600">&times;</button>
+                        </div>
+                    `;
+                } else {
+                    imageSection = `
+                        <div class="mt-2 flex items-center gap-2">
+                            <label class="cursor-pointer text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-3 rounded transition">
+                                Bild anhängen
+                                <input type="file" class="hidden" accept="image/*" onchange="handleImageUpload(event, ${task.id})">
+                            </label>
+                        </div>
+                    `;
+                }
+
+                taskDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-sm text-gray-600">Aufgabe ${index + 1}</span>
+                        <button onclick="removeTask(${task.id})" class="text-red-500 hover:text-red-700 text-sm">&times; Löschen</button>
+                    </div>
+                    <textarea 
+                        class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" 
+                        rows="2"
+                        oninput="updateTaskText(${task.id}, this.value)"
+                    >${escapeHTML(task.text)}</textarea>
+                    ${imageSection}
+                `;
+                listEl.appendChild(taskDiv);
+            });
+        }
+
+        function renderPreview() {
+            document.getElementById('preview-title').textContent = appState.title;
+            document.getElementById('preview-number').textContent = appState.number;
+
+            const instructionsEl = document.getElementById('preview-instructions');
+            if (appState.instructions && appState.instructions.trim() !== '') {
+                instructionsEl.innerHTML = escapeHTML(appState.instructions).replace(/\n/g, '<br>');
+                instructionsEl.style.display = 'block';
+            } else {
+                instructionsEl.style.display = 'none';
+                instructionsEl.innerHTML = '';
+            }
+
+            const tbody = document.getElementById('preview-tbody');
+            tbody.innerHTML = '';
+
+            appState.tasks.forEach((task, index) => {
+                const tr = document.createElement('tr');
+                let contentHTML = escapeHTML(task.text).replace(/\n/g, '<br>');
+                if (task.image) {
+                    contentHTML += `<img src="${task.image}" class="ws-task-image" />`;
+                }
+
+                tr.innerHTML = `
+                    <td>
+                        <div style="display: flex; gap: 15px;">
+                            <span style="font-weight: bold; white-space: nowrap;">${index + 1}.</span>
+                            <div style="width: 100%;">${contentHTML}</div>
+                        </div>
+                    </td>
+                    <td></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (window.renderMathInElement) {
+                // Math-Rendering für das gesamte Dokument anwenden (damit es auch in den Anweisungen klappt)
+                renderMathInElement(document.getElementById('worksheet'), {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        function adjustPreviewScale() {
+            const wrapper = document.getElementById('preview-wrapper');
+            const worksheet = document.getElementById('worksheet');
+            if(!wrapper || !worksheet) return;
+
+            const availableWidth = wrapper.clientWidth; 
+            // Calculate scale based on 1632px original width, with a tiny bit of padding (32px) for aesthetics
+            const scale = Math.min((availableWidth - 32) / 1632, 1);
+            
+            worksheet.style.transform = `scale(${scale})`;
+            
+            // Center it cleanly
+            worksheet.style.marginLeft = `${(availableWidth - (1632 * scale)) / 2}px`;
+            
+            // Set exact wrapper height to prevent excessive gray space
+            wrapper.style.height = `${(1056 * scale) + 32}px`;
+        }
+
+        function exportPDF() {
+            const element = document.getElementById('worksheet');
+            const wrapper = document.getElementById('preview-wrapper');
+            
+            // 1. STYLES UND SCROLL-POSITION SPEICHERN
+            const currentTransform = element.style.transform;
+            const currentMargin = element.style.marginLeft;
+            const scrollX = window.scrollX;
+            const scrollY = window.scrollY;
+
+            // 2. FÜR DEN EXPORT VOM LAYOUT ABKOPPELN (Verhindert Abschneiden lokal!)
+            // Wir hängen das Worksheet kurzzeitig direkt an den Body an, damit keine Flexboxen
+            // oder kleine Browser-Fenster den PDF-Bereich abschneiden können.
+            document.body.appendChild(element);
+            
+            element.style.transform = 'none';
+            element.style.marginLeft = '0px';
+            element.style.position = 'absolute';
+            element.style.top = '0px';
+            element.style.left = '0px';
+            element.style.zIndex = '99999';
+
+            // Nach ganz oben links scrollen, damit html2canvas den perfekten Viewport hat
+            window.scrollTo(0, 0);
+
+            // Tabloid = 17 x 11 inches. (1632 x 1056 px)
+            const opt = {
+                margin:       0,
+                filename:     `${appState.title}_${appState.number}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    width: 1632,         // Erzwingt exakte Breite
+                    height: 1056,        // Erzwingt exakte Höhe
+                    windowWidth: 1632, 
+                    windowHeight: 1056, 
+                    x: 0,
+                    y: 0,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF:        { unit: 'in', format: [17, 11], orientation: 'landscape' }
+            };
+
+            // 3. PDF GENERIEREN
+            html2pdf().set(opt).from(element).save().then(() => {
+                // 4. ALLES WIEDER AN DEN URSPRÜNGLICHEN PLATZ SETZEN
+                wrapper.appendChild(element);
+                
+                element.style.position = 'relative'; // Ursprung laut CSS
+                element.style.top = 'auto';
+                element.style.left = 'auto';
+                element.style.zIndex = 'auto';
+                element.style.transform = currentTransform;
+                element.style.marginLeft = currentMargin;
+                
+                window.scrollTo(scrollX, scrollY);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderEditor();
+            
+            // Loop bis KaTeX da ist (verhindert Referenz-Fehler)
+            const initPreview = setInterval(() => {
+                if (window.renderMathInElement) {
+                    clearInterval(initPreview);
+                    renderPreview();
+                    adjustPreviewScale();
+                }
+            }, 50);
+
+            window.addEventListener('resize', adjustPreviewScale);
+        });
+    </script>
+</body>
+</html>

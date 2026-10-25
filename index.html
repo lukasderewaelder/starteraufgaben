@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Starteraufgaben</title>
+  <meta name="description" content="Arbeitsblätter mit Starteraufgaben erstellen – offline, am PC und am iPad.">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Starteraufgaben">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/fonts.css">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/sheet.css">
+  <script src="vendor/katex/katex.min.js"></script>
+  <script src="vendor/katex/contrib/auto-render.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+</head>
+<body>
+  <div id="update-banner" class="banner" role="status" hidden>
+    <span>Eine neue Version ist bereit.</span>
+    <button type="button" class="btn btn-small" id="btn-update">Jetzt aktualisieren</button>
+  </div>
+
+  <main class="app">
+    <div class="panel-col">
+      <section class="card">
+        <h1 class="app-title">Starteraufgaben</h1>
+        <p class="muted">Technik-Test (Meilenstein 0): Prüft PDF-Export, Formel-Eingabe und Offline-Betrieb auf diesem Gerät. Die eigentliche Bedienung folgt.</p>
+      </section>
+
+      <section class="card">
+        <h2>1 · Blatt und PDF</h2>
+        <div class="field">
+          <label for="sel-format">Papierformat</label>
+          <select id="sel-format"></select>
+        </div>
+        <div class="field">
+          <label for="sel-solution">Lösungsfeld (Standard)</label>
+          <select id="sel-solution"></select>
+        </div>
+        <div class="field">
+          <label for="txt-task1">Text der Aufgabe 1 (mit <code>$…$</code> für Formeln)</label>
+          <textarea id="txt-task1" rows="2"></textarea>
+        </div>
+        <div class="field stepper">
+          <span id="lbl-count">Anzahl Aufgaben</span>
+          <div class="stepper-controls" role="group" aria-labelledby="lbl-count">
+            <button type="button" class="btn btn-icon" id="btn-fewer" aria-label="Eine Aufgabe weniger">−</button>
+            <output id="out-count" aria-live="polite">4</output>
+            <button type="button" class="btn btn-icon" id="btn-more" aria-label="Eine Aufgabe mehr">+</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="btn-pdf">PDF erstellen</button>
+        <div id="pdf-result" class="result" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2>2 · Formel-Editor (MathLive)</h2>
+        <p class="muted">Lädt erst auf Knopfdruck (ca. 0,8 MB). Eingetippte Formel wird als <code>$…$</code> in Aufgabe 1 übernommen.</p>
+        <button type="button" class="btn btn-block" id="btn-math">Formel-Editor starten</button>
+        <div id="math-area" hidden>
+          <div id="math-host"></div>
+          <p class="muted">LaTeX: <code id="math-latex">–</code></p>
+          <button type="button" class="btn btn-primary btn-block" id="btn-math-insert">In Aufgabe 1 einfügen</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3 · Offline und Installation</h2>
+        <ul id="diag-list" class="diag"></ul>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btn-diag">Aktualisieren</button>
+          <button type="button" class="btn" id="btn-diag-copy">Diagnose kopieren</button>
+        </div>
+        <p id="diag-copied" class="muted" hidden>In die Zwischenablage kopiert.</p>
+      </section>
+    </div>
+
+    <div class="preview-col">
+      <h2>Vorschau</h2>
+      <div id="preview-wrapper">
+        <div id="sheet" class="sheet"></div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

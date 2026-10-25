@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#2563eb"/>
+  <!-- Blatt (quer) -->
+  <rect x="64" y="120" width="384" height="272" rx="22" fill="#ffffff"/>
+  <!-- Kopfzeile: Titel + Nummernkreis -->
+  <rect x="92" y="148" width="150" height="20" rx="6" fill="#1f2937"/>
+  <circle cx="398" cy="160" r="26" fill="none" stroke="#1f2937" stroke-width="8"/>
+  <!-- Tabelle Aufgaben | Lösungen -->
+  <rect x="92" y="196" width="328" height="168" rx="6" fill="none" stroke="#1f2937" stroke-width="8"/>
+  <line x1="256" y1="196" x2="256" y2="364" stroke="#1f2937" stroke-width="6"/>
+  <line x1="92" y1="238" x2="420" y2="238" stroke="#1f2937" stroke-width="6"/>
+  <line x1="92" y1="280" x2="420" y2="280" stroke="#1f2937" stroke-width="6"/>
+  <line x1="92" y1="322" x2="420" y2="322" stroke="#1f2937" stroke-width="6"/>
+</svg>

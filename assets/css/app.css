@@ -1,0 +1,161 @@
+/* App-Oberfläche im Look des Originals (Tailwind-Palette, blau), von Hand geschrieben – ohne Tailwind-Laufzeit. */
+:root {
+  color-scheme: light;
+  --blue-50: #eff6ff;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-800: #1f2937;
+  --green-600: #16a34a;
+  --amber-500: #f59e0b;
+  --amber-100: #fef3c7;
+  --red-600: #dc2626;
+  --radius: 0.75rem;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+h1, h2 { margin: 0 0 0.75rem; line-height: 1.25; }
+h1.app-title { color: var(--blue-600); font-size: 1.5rem; }
+h2 { font-size: 1.1rem; }
+p { margin: 0 0 0.75rem; }
+code { font-size: 0.9em; background: var(--gray-100); padding: 0.05em 0.35em; border-radius: 0.3rem; }
+.muted { color: var(--gray-500); font-size: 0.9rem; }
+
+.app {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 24px;
+}
+.preview-col { order: -1; min-width: 0; }
+.panel-col { display: grid; gap: 20px; align-content: start; min-width: 0; }
+
+@media (min-width: 960px) {
+  .app { grid-template-columns: minmax(320px, 400px) 1fr; align-items: start; padding: 24px; }
+  .preview-col { order: 0; position: sticky; top: 24px; }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.field { margin-bottom: 1rem; }
+.field label, .field > span { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.25rem; }
+
+/* 16 px verhindert, dass iOS beim Fokussieren in das Feld hineinzoomt. */
+input, select, textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 16px;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.5rem;
+}
+textarea { resize: vertical; }
+
+:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--gray-800);
+  background: #fff;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover { background: var(--gray-100); }
+.btn-primary { color: #fff; background: var(--blue-600); border-color: var(--blue-600); }
+.btn-primary:hover { background: var(--blue-700); }
+.btn-block { width: 100%; }
+.btn-small { min-height: 36px; padding: 0 12px; }
+.btn-icon { min-width: 44px; padding: 0; font-size: 1.4rem; }
+.btn[disabled] { opacity: 0.6; cursor: progress; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stepper > span { margin: 0; }
+.stepper-controls { display: flex; align-items: center; gap: 8px; }
+.stepper output { min-width: 2ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.result { margin-top: 12px; font-size: 0.95rem; }
+.result:empty { display: none; }
+.result .box { border: 1px solid var(--gray-200); border-radius: 0.6rem; padding: 12px; background: var(--gray-50); }
+.result .box.error { border-color: var(--red-600); background: #fef2f2; }
+.result .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+.diag { list-style: none; margin: 0 0 12px; padding: 0; }
+.diag li { display: grid; grid-template-columns: 14px 1fr; gap: 4px 8px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 0.85rem; }
+.diag .dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--gray-300); }
+.diag .ok .dot { background: var(--green-600); }
+.diag .warn .dot { background: var(--amber-500); }
+.diag .bad .dot { background: var(--red-600); }
+.diag .label { font-weight: 600; }
+.diag .value { grid-column: 2; color: var(--gray-600); word-break: break-word; }
+
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--blue-50);
+  border-bottom: 1px solid var(--blue-500);
+}
+.banner[hidden] { display: none; }
+
+#preview-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--gray-200);
+  border-radius: 0.5rem;
+}
+
+#math-host math-field {
+  width: 100%;
+  min-height: 56px;
+  margin-bottom: 0.75rem;
+  padding: 6px 10px;
+  font-size: 1.6rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.5rem;
+}
+#math-area[hidden] { display: none; }
