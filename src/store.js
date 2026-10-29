@@ -1,11 +1,12 @@
 // Lokaler Speicher (IndexedDB). Fällt auf einen Arbeitsspeicher-Speicher zurück, wenn IndexedDB
 // nicht nutzbar ist (z. B. manche privaten Fenster) – dann zeigt die App eine Warnung.
 import { normalizeBankItem } from './bank.js';
+import { normalizeFolder } from './folders.js';
 import { DEFAULT_SETTINGS, normalizeSheet } from './model.js';
 
 const DB_NAME = 'starteraufgaben';
-const DB_VERSION = 2; // 2: Löschmarken ('deleted') für den Abgleich zwischen Geräten
-const STORES = ['sheets', 'images', 'bank', 'settings', 'deleted'];
+const DB_VERSION = 3; // 2: Löschmarken ('deleted') für den Abgleich zwischen Geräten; 3: Klassen-Ordner ('folders')
+const STORES = ['sheets', 'images', 'bank', 'settings', 'deleted', 'folders'];
 
 /** Eine Löschmarke merkt sich, dass ein Blatt/eine Bank-Aufgabe bewusst gelöscht wurde (sonst käme es beim Abgleich zurück). */
 const markOf = (kind, id, deletedAt) => ({ id: `${kind}:${id}`, kind, itemId: id, deletedAt });
@@ -73,7 +74,14 @@ function buildApi(backend, persistent) {
     saveBankItem: (item) => saveKept('bank', 'bank', item),
     deleteBankItem: (id, { deletedAt = Date.now() } = {}) => deleteWithMark('bank', 'bank', id, deletedAt),
 
-    /** Löschmarken: [{ kind: 'sheet' | 'bank', id, deletedAt }]. */
+    async listFolders() {
+      const all = await backend.getAll('folders');
+      return all.map((f) => normalizeFolder(f)).filter(Boolean);
+    },
+    saveFolder: (folder) => saveKept('folder', 'folders', folder),
+    deleteFolder: (id, { deletedAt = Date.now() } = {}) => deleteWithMark('folder', 'folders', id, deletedAt),
+
+    /** Löschmarken: [{ kind: 'sheet' | 'bank' | 'folder', id, deletedAt }]. */
     async listDeleted() {
       return (await backend.getAll('deleted')).map(({ kind, itemId, deletedAt }) => ({ kind, id: itemId, deletedAt }));
     },

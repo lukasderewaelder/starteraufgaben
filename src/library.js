@@ -1,6 +1,8 @@
 // Bibliothek: alle Blätter als Karten mit Vorschaubild, Suche, Sortierung und Aktionen.
 import { backupReminder, snooze } from './backup.js';
 import { FORMATS } from './formats.js';
+import { createFolderUi } from './folder-ui.js';
+import { folderOf, sheetsIn, validSelection } from './folders.js';
 import { cachedImageUrl, imageUrl } from './images.js';
 import { imageIdsOf } from './model.js';
 import { renderSheet } from './sheet.js';
@@ -35,6 +37,7 @@ export function createLibrary(app) {
   const sortSelect = $('#lib-sort');
   let cardSheetId = null;
   let observer = null;
+  const folderUi = createFolderUi(app, { onChange: () => render() });
 
   async function renderThumb(box, sheet) {
     await Promise.all(imageIdsOf(sheet).map((id) => imageUrl(app.store, id)));
@@ -103,6 +106,14 @@ export function createLibrary(app) {
     line3.className = 't';
     line3.textContent = `geändert ${new Date(sheet.updatedAt).toLocaleDateString('de-DE')}`;
     meta.append(title, line1, line2, line3);
+    // In „Alle“ sieht man, in welchem Ordner ein Blatt liegt
+    const folder = folderOf(sheet, app.folders);
+    if (folder && validSelection(app.settings.libraryFolder, app.folders) === 'all') {
+      const line4 = document.createElement('span');
+      line4.className = 't card-folder';
+      line4.textContent = `Ordner ${folder.name}`;
+      meta.append(line4);
+    }
     open.append(thumb, meta);
 
     const menu = document.createElement('button');
@@ -117,11 +128,17 @@ export function createLibrary(app) {
   }
 
   function render() {
-    const visible = sortSheets(app.sheets.filter((s) => matches(s, search.value.trim())), sortSelect.value);
+    folderUi.renderBar();
+    const selection = validSelection(app.settings.libraryFolder, app.folders);
+    const inFolder = sheetsIn(app.sheets, app.folders, selection);
+    const visible = sortSheets(inFolder.filter((s) => matches(s, search.value.trim())), sortSelect.value);
     grid.replaceChildren(...visible.map(card));
     const empty = $('#lib-empty');
     if (!app.sheets.length) {
       empty.textContent = 'Noch keine Blätter. Tippe oben auf „+ Neues Blatt“.';
+      empty.hidden = false;
+    } else if (!inFolder.length) {
+      empty.textContent = 'In diesem Ordner liegen noch keine Blätter. „+ Neues Blatt“ legt eines hier an; vorhandene verschiebst du über „⋯“ an der Karte.';
       empty.hidden = false;
     } else if (!visible.length) {
       empty.textContent = 'Keine Blätter gefunden.';
@@ -141,6 +158,7 @@ export function createLibrary(app) {
   async function show() {
     document.body.dataset.view = 'library';
     await app.refreshSheets();
+    await app.refreshFolders();
     render();
     renderReminder();
     window.scrollTo(0, 0);
@@ -185,6 +203,7 @@ export function createLibrary(app) {
     await app.duplicateSheet(s, { open: false });
     await show();
   }));
+  $('#c-move').addEventListener('click', withCardSheet((s) => folderUi.pick(s)));
   $('#c-file').addEventListener('click', withCardSheet((s) => app.backup.open({ sheets: [s] })));
   $('#c-del').addEventListener('click', withCardSheet((s) => app.deleteSheet(s)));
 

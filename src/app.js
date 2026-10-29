@@ -6,6 +6,7 @@ import { createBankUi } from './bank-ui.js';
 import { collectDiagnostics, diagnosticsToText } from './diagnose.js';
 import { createEditor } from './editor.js';
 import { FORMATS } from './formats.js';
+import { FOLDER_ALL, cleanFolderName, newFolder, sortFolders, validSelection } from './folders.js';
 import { createFormulaDialog } from './formula.js';
 import { createGeneratorDialog } from './gen-ui.js';
 import { createLibrary } from './library.js';
@@ -43,7 +44,7 @@ export async function startApp() {
   $('#storage-banner').hidden = store.persistent;
   navigator.storage?.persist?.().catch(() => {});
 
-  const app = { store, settings: await store.getSettings(), sheets: [], bank: [], lastChangeAt: 0 };
+  const app = { store, settings: await store.getSettings(), sheets: [], bank: [], folders: [], lastChangeAt: 0 };
   applyFormulaLook(app.settings);
   app.refreshSheets = async () => {
     app.sheets = await store.listSheets();
@@ -113,8 +114,62 @@ export async function startApp() {
     app.noteChange();
   };
 
+  // --- Klassen-Ordner ---------------------------------------------------------------------------
+  app.refreshFolders = async () => {
+    app.folders = sortFolders(await store.listFolders());
+  };
+  /** Der in der Bibliothek gewählte Ordner (oder null bei „Alle“ / „Ohne Ordner“). */
+  app.currentFolder = () => app.folders.find((f) => f.id === app.settings.libraryFolder) ?? null;
+  app.setLibraryFolder = (selection) => app.setSettings({ libraryFolder: validSelection(selection, app.folders) });
+
+  app.createFolder = async (name) => {
+    const folder = newFolder({ name });
+    await store.saveFolder(folder);
+    await app.refreshFolders();
+    app.noteChange();
+    return folder;
+  };
+  app.renameFolder = async (folder, name) => {
+    await store.saveFolder({ ...folder, name: cleanFolderName(name) || folder.name, updatedAt: Date.now() });
+    await app.refreshFolders();
+    app.noteChange();
+  };
+  /** Verschiebt ein Blatt in einen Ordner (null = ohne Ordner). Nur aus der Bibliothek aufrufen (der Editor hält sein Blatt selbst). */
+  app.moveSheet = async (sheet, folderId) => {
+    const latest = (await store.getSheet(sheet.id)) ?? sheet;
+    await store.saveSheet({ ...latest, folderId: folderId || null, updatedAt: Date.now() });
+    await app.refreshSheets();
+    app.noteChange();
+  };
+  /** Löscht einen Ordner; die Blätter darin bleiben erhalten und liegen danach ohne Ordner. „Rückgängig“ stellt alles wieder her. */
+  app.deleteFolder = async (folder) => {
+    const inside = app.sheets.filter((s) => s.folderId === folder.id);
+    for (const sheet of inside) await store.saveSheet({ ...(await store.getSheet(sheet.id)), folderId: null, updatedAt: Date.now() });
+    await store.deleteFolder(folder.id);
+    if (app.settings.libraryFolder === folder.id) await app.setSettings({ libraryFolder: FOLDER_ALL });
+    await app.refreshFolders();
+    await app.refreshSheets();
+    app.noteChange();
+    if (document.body.dataset.view === 'library') await library.show();
+    toast(`Ordner „${folder.name}“ gelöscht${inside.length ? ` – ${inside.length === 1 ? 'das Blatt liegt' : `die ${inside.length} Blätter liegen`} jetzt ohne Ordner` : ''}.`, {
+      action: 'Rückgängig',
+      ms: 10_000,
+      onAction: async () => {
+        await store.saveFolder(folder);
+        for (const sheet of inside) {
+          const now = await store.getSheet(sheet.id);
+          if (now && !now.folderId) await store.saveSheet({ ...now, folderId: folder.id, updatedAt: Date.now() });
+        }
+        await app.refreshFolders();
+        await app.refreshSheets();
+        if (document.body.dataset.view === 'library') await library.show();
+      },
+    });
+  };
+
   app.createSheet = async (base) => {
     const sheet = base ?? newSheet({ number: nextNumber(app.sheets), settings: app.settings });
+    if (!base && app.currentFolder()) sheet.folderId = app.currentFolder().id; // neues Blatt landet im gerade geöffneten Ordner
     await store.saveSheet(sheet);
     await app.refreshSheets();
     await app.go(sheetPath(sheet.id));
@@ -222,6 +277,7 @@ export async function startApp() {
 
   await app.refreshSheets();
   await app.refreshBank();
+  await app.refreshFolders();
   if (!app.sheets.length) {
     await store.saveSheet(newSheet({ number: 1, settings: app.settings, taskTexts: FIRST_SHEET_TASKS }));
     await app.refreshSheets();

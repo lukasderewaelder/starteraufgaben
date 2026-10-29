@@ -50,6 +50,7 @@
           <button type="button" id="reminder-later" class="btn btn-small">Später</button>
         </span>
       </div>
+      <nav id="lib-folders" class="lib-folders" aria-label="Klassen-Ordner"></nav>
       <div class="lib-tools">
         <label for="lib-search" class="sr-only">Blätter durchsuchen</label>
         <input id="lib-search" type="search" placeholder="Blätter durchsuchen …" autocomplete="off">
@@ -193,6 +194,7 @@
           </div>
           <div class="field"><label for="f-klasse">Klasse / Kurs</label><input id="f-klasse" type="text" autocomplete="off"></div>
         </div>
+        <div class="field"><label for="f-folder">Ordner</label><select id="f-folder"></select></div>
         <div class="field"><label for="f-instructions">Anweisung (optional)</label><textarea id="f-instructions" rows="2" placeholder="Z. B.: Löse die Aufgaben in den ersten 5 Minuten."></textarea></div>
         <div class="field-row">
           <div class="field"><label for="f-format">Papierformat</label><select id="f-format"></select></div>
@@ -299,10 +301,34 @@
     <div class="menu-list">
       <button type="button" class="btn btn-primary" id="c-open">Öffnen</button>
       <button type="button" class="btn" id="c-dup">Duplizieren</button>
+      <button type="button" class="btn" id="c-move">In Ordner verschieben …</button>
       <button type="button" class="btn" id="c-file">Als Datei sichern</button>
       <button type="button" class="btn btn-danger" id="c-del">Löschen</button>
     </div>
     <div class="dialog-foot"><button type="button" class="btn" data-close>Schließen</button></div>
+  </dialog>
+
+  <dialog id="dlg-folder" aria-labelledby="folder-title">
+    <h2 id="folder-title">Neuer Ordner</h2>
+    <div class="field">
+      <label for="folder-name">Name (z. B. Klasse „7b“)</label>
+      <input id="folder-name" type="text" maxlength="40" autocomplete="off">
+    </div>
+    <p id="folder-error" class="result-error" role="alert"></p>
+    <p class="muted">Löschst du einen Ordner, bleiben die Blätter erhalten – sie liegen dann „ohne Ordner“.</p>
+    <div class="dialog-foot">
+      <button type="button" class="btn btn-danger" id="folder-delete" hidden>Ordner löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Abbrechen</button>
+      <button type="button" class="btn btn-primary" id="folder-ok">Anlegen</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-folderpick" aria-labelledby="folderpick-heading">
+    <h2 id="folderpick-heading">In Ordner verschieben</h2>
+    <p id="folderpick-title" class="muted"></p>
+    <div id="folderpick-list" class="menu-list"></div>
+    <div class="dialog-foot"><button type="button" class="btn" data-close>Abbrechen</button></div>
   </dialog>
 
   <dialog id="dlg-gen" class="wide" aria-labelledby="gen-title">

@@ -86,7 +86,8 @@ export function createBackupUi(app) {
       }
       const imageIds = new Set([...sheets.flatMap(imageIdsOf), ...imageIdsOfBank(bank)]);
       const images = (await Promise.all([...imageIds].map((id) => app.store.getImage(id)))).filter(Boolean);
-      const backup = await buildBackup({ sheets, bank, images });
+      const folders = scope.sheets ? [] : await app.store.listFolders();
+      const backup = await buildBackup({ sheets, bank, folders, images });
       const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
       const name = backupFilename(scope.sheets ? { scope: 'sheet', sheet: sheets[0] } : { scope: 'all' });
       const delivery = fileDeliverable(blob, name);
@@ -151,7 +152,11 @@ export function createBackupUi(app) {
     await app.refreshBank();
     const plan = planImport(app.sheets, parsed.sheets);
     const bankPlan = planImport(app.bank, parsed.bank);
+    await app.refreshFolders();
+    const folderPlan = planImport(app.folders, parsed.folders ?? []);
     const lines = [];
+    if (folderPlan.add.length) lines.push(`${folderPlan.add.length} neue(r) Ordner`);
+    if (folderPlan.update.length) lines.push(`${folderPlan.update.length} Ordner, die in der Datei neuer sind (werden aktualisiert)`);
     if (plan.add.length) lines.push(`${plan.add.length} neue(s) Blatt/Blätter`);
     if (plan.update.length) lines.push(`${plan.update.length} Blatt/Blätter, die in der Datei neuer sind (werden aktualisiert)`);
     if (plan.same) lines.push(`${plan.same} Blatt/Blätter unverändert`);
@@ -160,7 +165,7 @@ export function createBackupUi(app) {
     if (bankPlan.update.length) lines.push(`${bankPlan.update.length} Aufgabe(n) der Bank, die in der Datei neuer sind (werden aktualisiert)`);
     if (bankPlan.same) lines.push(`${bankPlan.same} Bank-Aufgabe(n) unverändert`);
     if (bankPlan.localNewer.length) lines.push(`${bankPlan.localNewer.length} Bank-Aufgabe(n), die hier neuer sind (bleiben unverändert)`);
-    const changes = plan.add.length + plan.update.length + bankPlan.add.length + bankPlan.update.length;
+    const changes = plan.add.length + plan.update.length + bankPlan.add.length + bankPlan.update.length + folderPlan.add.length + folderPlan.update.length;
     const newerHere = plan.localNewer.length + bankPlan.localNewer.length;
 
     const apply = async (withCopies) => {
@@ -176,10 +181,12 @@ export function createBackupUi(app) {
           await app.store.saveImage({ id: img.id, blob, width: img.width, height: img.height });
           rememberImage(img.id, blob);
         }
+        for (const folder of [...folderPlan.add, ...folderPlan.update]) await app.store.saveFolder(folder);
         for (const sheet of wanted) await app.store.saveSheet(sheet);
         for (const item of wantedBank) await app.store.saveBankItem(item);
         await app.refreshSheets();
         await app.refreshBank();
+        await app.refreshFolders();
         app.onLibraryChanged();
         const parts = [wanted.length && `${wanted.length} Blatt/Blätter`, wantedBank.length && `${wantedBank.length} Bank-Aufgabe(n)`].filter(Boolean);
         showResult(`Fertig: ${parts.join(' und ') || 'nichts'} eingespielt.`, { warnings: parsed.warnings });

@@ -2,6 +2,7 @@
 import { applyPrintPageSize, canSharePdf, createPdf, downloadPdf, openPdf, pdfFile, printSheet, safeFilename, sharePdf } from './export-pdf.js';
 import { autoFit } from './fit.js';
 import { FORMATS } from './formats.js';
+import { folderForClass } from './folders.js';
 import { describeSpec, generateTasks, rollTask } from './generators/index.js';
 import { History } from './history.js';
 import { cachedImageUrl, imageUrl, prepareImage, rememberImage } from './images.js';
@@ -158,6 +159,8 @@ export function createEditor(app) {
     $('#f-zeit').value = sheet.zeit;
     $('#f-date').value = sheet.date;
     $('#f-klasse').value = sheet.klasse;
+    fill($('#f-folder'), app.folders.map((f) => [f.id, f.name]), 'Ohne Ordner');
+    $('#f-folder').value = app.folders.some((f) => f.id === sheet.folderId) ? sheet.folderId : '';
     $('#f-instructions').value = sheet.instructions;
     $('#f-format').value = sheet.format;
     $('#f-solution').value = sheet.solutionDefault;
@@ -268,6 +271,21 @@ export function createEditor(app) {
   bindSheetField('#f-zeit', 'zeit');
   bindSheetField('#f-date', 'date');
   bindSheetField('#f-klasse', 'klasse');
+  $('#f-folder').addEventListener('change', (e) => {
+    if (!sheet) return;
+    sheet.folderId = e.target.value || null;
+    commit('sheet-folder');
+  });
+  // Vorschlag aus der Klasse: Liegt das Blatt in keinem Ordner und gibt es einen Ordner mit diesem Namen, kommt es hinein.
+  $('#f-klasse').addEventListener('change', () => {
+    if (!sheet || app.folders.some((f) => f.id === sheet.folderId)) return;
+    const match = folderForClass(app.folders, sheet.klasse);
+    if (!match) return;
+    sheet.folderId = match.id;
+    $('#f-folder').value = match.id;
+    commit('sheet-folder');
+    toast(`In Ordner „${match.name}“ gelegt.`);
+  });
   bindSheetField('#f-instructions', 'instructions');
   bindSheetField('#f-format', 'format', { rerender: true });
   bindSheetField('#f-solution', 'solutionDefault', { rerender: true });

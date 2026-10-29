@@ -1,10 +1,11 @@
 // Sicherung als Datei: Blätter + Bilder -> JSON und zurück. Reine Logik (kein DOM) bis auf Blob/atob, die auch Node kennt.
 import { imageIdsOfBank, normalizeBankItem } from './bank.js';
+import { normalizeFolder } from './folders.js';
 import { duplicateSheet, imageIdsOf, normalizeSheet, uid } from './model.js';
 
 export const BACKUP_FORMAT = 'starteraufgaben-sicherung';
-export const BACKUP_VERSION = 2; // 2: Löschmarken (`deleted`) für den Abgleich; Version-1-Dateien bleiben lesbar
-export const LIMITS = { fileChars: 200 * 1024 * 1024, sheets: 5000, bank: 20_000, images: 2000, imageBytes: 12 * 1024 * 1024, deleted: 50_000 };
+export const BACKUP_VERSION = 3; // 2: Löschmarken (`deleted`) für den Abgleich; 3: Klassen-Ordner (`folders`); ältere Dateien bleiben lesbar
+export const LIMITS = { fileChars: 200 * 1024 * 1024, sheets: 5000, bank: 20_000, images: 2000, imageBytes: 12 * 1024 * 1024, deleted: 50_000, folders: 1000 };
 
 // Abgleich über eine gemeinsame Datei (z. B. in OneDrive): fester Name, Löschmarken werden 90 Tage aufbewahrt.
 export const SYNC_FILENAME = 'Starteraufgaben_Sync.json';
@@ -37,9 +38,10 @@ export function base64ToBlob(data, type) {
 /**
  * `images`: [{ id, blob, width, height }] – es werden nur die von Blättern und Bank-Aufgaben benutzten gesichert.
  * `bank` ist optional (die Sicherung eines einzelnen Blatts enthält keine Bank).
- * `deleted`: Löschmarken [{ kind: 'sheet' | 'bank', id, deletedAt }] – nur für den Abgleich nötig.
+ * `deleted`: Löschmarken [{ kind: 'sheet' | 'bank' | 'folder', id, deletedAt }] – nur für den Abgleich nötig.
+ * `folders`: die Klassen-Ordner der Bibliothek (die Sicherung eines einzelnen Blatts hat keine).
  */
-export async function buildBackup({ sheets, bank = [], images, deleted = [], now = Date.now() }) {
+export async function buildBackup({ sheets, bank = [], images, deleted = [], folders = [], now = Date.now() }) {
   const used = new Set([...sheets.flatMap(imageIdsOf), ...imageIdsOfBank(bank)]);
   const wanted = images.filter((i) => used.has(i.id) && i.blob);
   return {
@@ -48,6 +50,7 @@ export async function buildBackup({ sheets, bank = [], images, deleted = [], now
     exportedAt: now,
     sheets: structuredClone(sheets),
     bank: structuredClone(bank),
+    folders: structuredClone(folders),
     deleted: deleted.map(({ kind, id, deletedAt }) => ({ kind, id, deletedAt })),
     images: await Promise.all(
       wanted.map(async (i) => ({ id: i.id, type: i.blob.type, width: i.width, height: i.height, data: await blobToBase64(i.blob) })),
@@ -70,7 +73,7 @@ const fail = (error) => ({ ok: false, error });
 function parseMarks(raw) {
   const best = new Map();
   for (const m of Array.isArray(raw) ? raw : []) {
-    const ok = (m?.kind === 'sheet' || m?.kind === 'bank') && typeof m.id === 'string' && m.id && m.id.length <= 100 && Number.isFinite(m.deletedAt);
+    const ok = (m?.kind === 'sheet' || m?.kind === 'bank' || m?.kind === 'folder') && typeof m.id === 'string' && m.id && m.id.length <= 100 && Number.isFinite(m.deletedAt);
     if (!ok) continue;
     const key = `${m.kind}:${m.id}`;
     if (!best.has(key) || best.get(key).deletedAt < m.deletedAt) best.set(key, { kind: m.kind, id: m.id, deletedAt: m.deletedAt });
@@ -78,7 +81,7 @@ function parseMarks(raw) {
   return [...best.values()];
 }
 
-/** Liest eine Sicherungsdatei (Text) und prüft sie gründlich. Gibt { ok, sheets, bank, images, deleted, warnings } oder { ok: false, error }. */
+/** Liest eine Sicherungsdatei (Text) und prüft sie gründlich. Gibt { ok, sheets, bank, folders, images, deleted, warnings } oder { ok: false, error }. */
 export function parseBackup(text, { now = Date.now() } = {}) {
   if (typeof text !== 'string' || text.length > LIMITS.fileChars) return fail('Die Datei ist zu groß oder leer.');
   let data;
@@ -99,6 +102,12 @@ export function parseBackup(text, { now = Date.now() } = {}) {
     return fail('Die Sicherung enthält unplausibel viele Einträge.');
   }
   const deleted = parseMarks(data.deleted);
+  const folderById = new Map();
+  for (const raw of Array.isArray(data.folders) ? data.folders.slice(0, LIMITS.folders) : []) {
+    const folder = normalizeFolder(raw, { now });
+    const other = folder && folderById.get(folder.id);
+    if (folder && (!other || other.updatedAt < folder.updatedAt)) folderById.set(folder.id, folder);
+  }
 
   const warnings = [];
   const images = [];
@@ -168,7 +177,7 @@ export function parseBackup(text, { now = Date.now() } = {}) {
   if (missingImages) warnings.push(`${missingImages} fehlende(s) Bild(er) werden als „kein Bild“ übernommen.`);
   if (!byId.size && !bankById.size && !deleted.length) return fail('Die Sicherung enthält kein lesbares Blatt und keine Bank-Aufgabe.');
 
-  return { ok: true, sheets: [...byId.values()], bank: [...bankById.values()], images, deleted, warnings };
+  return { ok: true, sheets: [...byId.values()], bank: [...bankById.values()], folders: [...folderById.values()], images, deleted, warnings };
 }
 
 /** Was passiert beim Einspielen (Blätter und Bank-Aufgaben)? Gleiche ID: das Neuere (nach updatedAt) gewinnt. */

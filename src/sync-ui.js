@@ -181,6 +181,7 @@ export function createSyncUi(app, ui) {
       for (const { id, blob } of applied.savedImages) rememberImage(id, blob);
       await app.refreshSheets();
       await app.refreshBank();
+      await app.refreshFolders();
       app.onLibraryChanged();
       const json = JSON.stringify(await buildSyncFile(app.store));
       const result = await deliver(json);

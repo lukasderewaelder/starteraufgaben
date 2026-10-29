@@ -6,10 +6,10 @@ import { imageIdsOf } from './model.js';
 
 /** Alles, was in die Sync-Datei gehört, aus dem lokalen Speicher: Blätter, Bank, benutzte Bilder, Löschmarken. */
 export async function collectAll(store) {
-  const [sheets, bank, deleted] = await Promise.all([store.listSheets(), store.listBank(), store.listDeleted()]);
+  const [sheets, bank, folders, deleted] = await Promise.all([store.listSheets(), store.listBank(), store.listFolders(), store.listDeleted()]);
   const ids = new Set([...sheets.flatMap(imageIdsOf), ...imageIdsOfBank(bank)]);
   const images = (await Promise.all([...ids].map((id) => store.getImage(id)))).filter(Boolean);
-  return { sheets, bank, images, deleted };
+  return { sheets, bank, folders, images, deleted };
 }
 
 /** Der aktuelle lokale Stand als Sicherungsdatei-Inhalt (Objekt; mit JSON.stringify zu Text machen). */
@@ -17,17 +17,21 @@ export async function buildSyncFile(store, now = Date.now()) {
   return buildBackup({ ...(await collectAll(store)), now });
 }
 
-const EMPTY = Object.freeze({ sheets: [], bank: [], deleted: [], images: [] });
+const EMPTY = Object.freeze({ sheets: [], bank: [], folders: [], deleted: [], images: [] });
 
-/** Plan für Blätter und Bank. `parsed`: Ergebnis von parseBackup oder null (Datei leer bzw. neu). */
+/** Plan für Blätter, Bank und Ordner. `parsed`: Ergebnis von parseBackup oder null (Datei leer bzw. neu). */
 export async function planFromFile(store, parsed, lastSyncAt = 0) {
   const incoming = parsed ?? EMPTY;
-  const [sheets, bank, deleted] = await Promise.all([store.listSheets(), store.listBank(), store.listDeleted()]);
+  const [sheets, bank, folders, deleted] = await Promise.all([store.listSheets(), store.listBank(), store.listFolders(), store.listDeleted()]);
   return {
     sheets: planSync(sheets, incoming.sheets, { marks: marksOf(deleted, 'sheet'), incomingMarks: marksOf(incoming.deleted, 'sheet'), lastSyncAt }),
     bank: planSync(bank, incoming.bank, { marks: marksOf(deleted, 'bank'), incomingMarks: marksOf(incoming.deleted, 'bank'), lastSyncAt }),
+    // Ordner sind nur ein Name: bei Änderung auf beiden Seiten gewinnt der neuere, ohne Konflikt-Kopie (lastSyncAt 0)
+    folders: planSync(folders, incoming.folders ?? [], { marks: marksOf(deleted, 'folder'), incomingMarks: marksOf(incoming.deleted, 'folder'), lastSyncAt: 0 }),
   };
 }
+
+const NO_CHANGES = Object.freeze({ add: [], update: [], remove: [], conflicts: [], localNewer: [], keptByMark: [], marks: [], same: 0 });
 
 /** Was würde sich hier ändern? Zahlen für die Vorschau. */
 export function countPlan(plan) {
@@ -42,16 +46,21 @@ export function countPlan(plan) {
   });
   const sheets = part(plan.sheets);
   const bank = part(plan.bank);
-  const changes = sheets.add + sheets.update + sheets.remove + bank.add + bank.update + bank.remove;
-  return { sheets, bank, changes, conflicts: sheets.conflicts + bank.conflicts };
+  const folders = part(plan.folders ?? NO_CHANGES);
+  const changes = sheets.add + sheets.update + sheets.remove + bank.add + bank.update + bank.remove + folders.add + folders.update + folders.remove;
+  return { sheets, bank, folders, changes, conflicts: sheets.conflicts + bank.conflicts };
 }
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 /** Vorschau als Zeilen für die Anzeige. */
 export function describePlan(plan) {
-  const { sheets, bank } = countPlan(plan);
+  const { sheets, bank, folders } = countPlan(plan);
   const lines = [];
+  const folder = (n, text) => n && lines.push(`${plural(n, 'Ordner', 'Ordner')} ${text}`);
+  folder(folders.add, 'neu aus der Datei');
+  folder(folders.update, 'aus der Datei neuer – werden aktualisiert');
+  folder(folders.remove, 'in der Datei gelöscht – werden hier gelöscht');
   const sheet = (n, text) => n && lines.push(`${plural(n, 'Blatt', 'Blätter')} ${text}`);
   const task = (n, text) => n && lines.push(`${plural(n, 'Aufgabe', 'Aufgaben')} der Bank ${text}`);
   sheet(sheets.add, 'neu aus der Datei');
@@ -87,12 +96,16 @@ export async function applyPlan(store, plan, parsed, { now = Date.now() } = {}) 
     await store.saveImage({ id: img.id, blob, width: img.width, height: img.height });
     savedImages.push({ id: img.id, blob });
   }
+  const folderPlan = plan.folders ?? NO_CHANGES;
+  for (const folder of [...folderPlan.add, ...folderPlan.update]) await store.saveFolder(folder); // zuerst: Blätter verweisen darauf
   for (const sheet of sheets) await store.saveSheet(sheet);
   for (const item of bank) await store.saveBankItem(item);
   for (const { item, deletedAt } of plan.sheets.remove) await store.deleteSheet(item.id, { deletedAt });
   for (const { item, deletedAt } of plan.bank.remove) await store.deleteBankItem(item.id, { deletedAt });
+  for (const { item, deletedAt } of folderPlan.remove) await store.deleteFolder(item.id, { deletedAt });
   for (const { id, deletedAt } of plan.sheets.marks) await store.saveDeleted('sheet', id, deletedAt);
   for (const { id, deletedAt } of plan.bank.marks) await store.saveDeleted('bank', id, deletedAt);
+  for (const { id, deletedAt } of folderPlan.marks) await store.saveDeleted('folder', id, deletedAt);
   await store.pruneDeleted(MARK_MAX_AGE, now);
   return { savedImages, copies: sheetCopies.length + bankCopies.length };
 }

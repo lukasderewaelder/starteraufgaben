@@ -90,7 +90,7 @@ test('Abgleich ohne Dateizugriff (iPad): Blatt wandert hin, Löschen wandert mit
   await syncByFile(a.page, null);
   assert.match(await status(a.page), /stimmen überein/);
   let file = await confirmAndDownload(a.page, 'Abgleichen');
-  assert.equal(JSON.parse(file).version, 2);
+  assert.equal(JSON.parse(file).version, 3);
   assert.equal(JSON.parse(file).sheets.length, 2);
 
   // B gleicht ab: bekommt beide Blätter von A
@@ -272,7 +272,7 @@ test('Speicher-Upgrade: ein vorhandener Speicher (Version 1) bleibt erhalten und
         };
       }),
   );
-  assert.deepEqual(stores, { version: 2, stores: ['bank', 'deleted', 'images', 'settings', 'sheets'] });
+  assert.deepEqual(stores, { version: 3, stores: ['bank', 'deleted', 'folders', 'images', 'settings', 'sheets'] });
   // Löschen merkt sich eine Marke und Rückgängig hebt sie wieder auf
   await page.evaluate(async () => {
     const { app: a } = window.__starteraufgaben;

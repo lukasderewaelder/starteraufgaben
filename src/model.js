@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   formulaEditor: true, // Formel-Knopf öffnet den visuellen Editor (MathLive); aus = `$…$` selbst tippen
   formulaFontMatch: true, // Formelschrift wie das Blatt (Comic Neue); aus = klassische Mathe-Schrift (siehe mathfont.css)
   thousandsSeparator: true, // Zahlen ab 5 Stellen in Formeln automatisch mit kleinem Abstand (12 345); nur Anzeige
+  libraryFolder: 'all', // zuletzt gewählter Reiter der Bibliothek: 'all', 'none' oder eine Ordner-ID
   lastBankKlassenstufe: '', // zuletzt beim „In Bank speichern“ gewählt (Vorbelegung)
   lastBankThema: '',
   lastGeneratorType: 'arith', // Zufallsaufgaben: zuletzt benutzter Typ und die Einstellungen je Typ (nie verändern, nur ersetzen)
@@ -56,6 +57,7 @@ export function newSheet({ number = '1', settings = DEFAULT_SETTINGS, taskTexts 
     date: todayIso(new Date(now)),
     klasse: '',
     zeit: '',
+    folderId: null, // Klassen-Ordner der Bibliothek (siehe folders.js)
     format: FORMATS[settings.defaultFormat] ? settings.defaultFormat : DEFAULT_FORMAT,
     solutionDefault: SOLUTION_STYLE_IDS.includes(settings.defaultSolutionStyle) ? settings.defaultSolutionStyle : 'leer',
     tasks: taskTexts.map((t) => newTask(t)),
@@ -86,6 +88,7 @@ export function normalizeSheet(raw, { now = Date.now() } = {}) {
     date: /^\d{4}-\d{2}-\d{2}$/.test(raw.date ?? '') ? raw.date : '',
     klasse: str(raw.klasse, LIMITS.short),
     zeit: str(raw.zeit, LIMITS.short),
+    folderId: typeof raw.folderId === 'string' && raw.folderId ? raw.folderId.slice(0, 100) : null,
     format: FORMATS[raw.format] ? raw.format : DEFAULT_FORMAT,
     solutionDefault: SOLUTION_STYLE_IDS.includes(raw.solutionDefault) ? raw.solutionDefault : 'leer',
     tasks: tasks.map((t) => ({

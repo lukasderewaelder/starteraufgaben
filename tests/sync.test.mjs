@@ -62,7 +62,7 @@ test('Speicher: eine Marke für Blatt und Bank-Aufgabe mit gleicher ID verwechse
 test('Datei: Löschmarken werden gespeichert und wieder gelesen, Version 1 bleibt lesbar', async () => {
   const sheet = sheetAt(1, 100);
   const backup = await buildBackup({ sheets: [sheet], images: [], deleted: [{ kind: 'sheet', id: 'weg', deletedAt: 7, extra: 'x' }] });
-  assert.equal(backup.version, 2);
+  assert.equal(backup.version, 3);
   assert.deepEqual(backup.deleted, [{ kind: 'sheet', id: 'weg', deletedAt: 7 }]);
   const parsed = parseBackup(JSON.stringify(backup));
   assert.deepEqual(parsed.deleted, [{ kind: 'sheet', id: 'weg', deletedAt: 7 }]);
@@ -72,7 +72,7 @@ test('Datei: Löschmarken werden gespeichert und wieder gelesen, Version 1 bleib
   assert.equal(old.ok, true);
   assert.deepEqual(old.deleted, []);
 
-  const future = parseBackup(JSON.stringify({ ...v1, version: 3 }));
+  const future = parseBackup(JSON.stringify({ ...v1, version: 4 }));
   assert.equal(future.ok, false);
   assert.match(future.error, /neueren Version/);
 });
